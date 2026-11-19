@@ -73,26 +73,20 @@ evm-dvp-repo/
 │   │   ├── nhEUR.sol                     # Tokenised EUR commercial bank deposit (JPM Coin model)
 │   │   ├── RepoDvP.sol                   # Core DvP/RvP settlement and margin engine
 │   │   └── interfaces/
-│   │       ├── erc3643/                  # Canonical ERC-3643 (T-REX) Standard Interfaces
-│   │       │   ├── IERC3643.sol          # Canonical ERC-3643 security token standard interface
-│   │       │   ├── IERC3643Compliance.sol# Modular compliance interface
-│   │       │   ├── IERC3643IdentityRegistry.sol # Identity registry interface
-│   │       │   ├── IERC3643ClaimTopicsRegistry.sol
-│   │       │   ├── IERC3643TrustedIssuersRegistry.sol
-│   │       │   ├── IERC3643IdentityRegistryStorage.sol
-│   │       │   ├── IIdentity.sol         # ONCHAINID interface (ERC-734 / ERC-735)
-│   │       │   ├── IClaimIssuer.sol
-│   │       │   └── ERC3643EventsLib.sol
+│   │       ├── InhBOND.sol               # Sovereign bond banking interface
 │   │       ├── InhEUR.sol                # Tokenised deposit interface
 │   │       ├── IRepoTypes.sol            # Data structs, status enums, and order formats
 │   │       └── IRepoDvP.sol              # Settlement engine interface
 │   └── periphery/
 │       ├── RWAFundNAVOracle.sol          # Production RWA MMF NAV Oracle (BUIDL / OUSG model)
-│       ├── MockBondPriceOracle.sol       # Chainlink AggregatorV3 bond price feed
 │       └── interfaces/
 │           ├── IRWAFundNAVOracle.sol
 │           └── IBondPriceOracle.sol
 ├── test/
+│   ├── interfaces/                       # Authentic ERC-3643 & test bond interfaces
+│   │   ├── IERC3643.sol
+│   │   ├── ITestBond.sol
+│   │   └── ...
 │   ├── unit/
 │   │   ├── ComplianceAndTokens.t.sol     # ERC-3643 verification, partial freeze, recovery, oracle
 │   │   └── RepoDvP.t.sol                 # Atomic DvP, RvP, EIP-712 orders, open RFQ
@@ -104,7 +98,8 @@ evm-dvp-repo/
 │   │   ├── RepoInvariant.t.sol           # Continuous contract solvency & zero trapped cash
 │   │   └── RepoHandler.sol               # Invariant campaign action wrapper
 │   ├── mock/
-│   │   └── MockIdentity.sol              # Lightweight test ONCHAINID contract
+│   │   ├── MockIdentity.sol              # Lightweight test ONCHAINID contract
+│   │   └── MockBondPriceOracle.sol       # Test price feed for simulating market crashes
 │   └── utils/
 │       └── RepoTestBase.sol              # Institutional test fixture deploying authentic T-REX suite
 └── script/

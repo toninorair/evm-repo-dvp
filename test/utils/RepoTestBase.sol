@@ -4,7 +4,7 @@ pragma solidity 0.8.34;
 import {Test} from "forge-std/Test.sol";
 
 import {ComplianceRegistry} from "../../src/abstract/ComplianceRegistry.sol";
-import {MockBondPriceOracle} from "../../src/periphery/MockBondPriceOracle.sol";
+import {MockBondPriceOracle} from "../mock/MockBondPriceOracle.sol";
 import {nhEUR} from "../../src/core/nhEUR.sol";
 import {RepoDvP} from "../../src/core/RepoDvP.sol";
 import {IRepoTypes} from "../../src/core/interfaces/IRepoTypes.sol";

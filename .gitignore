@@ -15,7 +15,8 @@ coverage/
 lcov.info
 
 # Docs
-docs/
+docs/*
+!docs/*.md
 
 # Dotenv file
 .env

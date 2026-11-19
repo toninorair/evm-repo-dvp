@@ -5,7 +5,7 @@ import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 
 import {ComplianceRegistry} from "../../src/ComplianceRegistry.sol";
-import {RWAFundNAVOracle} from "../../src/RWAFundNAVOracle.sol";
+import {nhNAVOracle} from "../../src/nhNAVOracle.sol";
 import {nhEUR} from "../../src/nhEUR.sol";
 import {RepoDvP} from "../../src/RepoDvP.sol";
 import {InhBOND} from "../../src/interfaces/InhBOND.sol";
@@ -25,7 +25,7 @@ contract DeployAll is Script {
         external
         returns (
             ComplianceRegistry complianceRegistry,
-            RWAFundNAVOracle oracle,
+            nhNAVOracle oracle,
             nhEUR cashToken,
             InhBOND bondToken,
             RepoDvP repoDvP
@@ -61,8 +61,8 @@ contract DeployAll is Script {
         console2.log("IdentityRegistry deployed at:", address(identityRegistry));
 
         // 2. Deploy RWA Fund NAV Oracle (Chainlink AggregatorV3 compatible)
-        oracle = new RWAFundNAVOracle(deployer, deployer, INITIAL_BOND_PRICE, 86_400, 50);
-        console2.log("RWAFundNAVOracle deployed at:", address(oracle));
+        oracle = new nhNAVOracle(deployer, deployer, INITIAL_BOND_PRICE, 86_400, 50);
+        console2.log("nhNAVOracle deployed at:", address(oracle));
 
         // 3. Deploy nhEUR (Tokenised Commercial Bank Deposit - JPM Coin Model)
         cashToken = new nhEUR(deployer, deployer, deployer, address(complianceRegistry));

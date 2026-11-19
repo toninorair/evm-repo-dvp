@@ -71,7 +71,7 @@ In volatile macro environments, our trading desk cannot rebalance liquidity or a
 ├────────────────────────────────────────────────────────────────────────────────────────┤
 │                                                                                        │
 │   [ Continuous MTM ] ──> [ Threshold Breach ] ──> [ Programmatic Margin ] ──> [ Cure ] │
-│   RWAFundNAVOracle        Collateral Value drops   postMarginCall()           Top-Up   │
+│   nhNAVOracle             Collateral Value drops   postMarginCall()           Top-Up   │
 │   (Chainlink V3 Feed)     below Maintenance Margin Grace period starts        Restored │
 │                                                                                        │
 │                                                   [ Missed Cure / Maturity ]           │

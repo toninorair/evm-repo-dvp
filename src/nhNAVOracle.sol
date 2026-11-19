@@ -2,13 +2,13 @@
 pragma solidity 0.8.34;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IRWAFundNAVOracle} from "./interfaces/IRWAFundNAVOracle.sol";
+import {InhNAVOracle} from "./interfaces/InhNAVOracle.sol";
 
-/// @title  RWAFundNAVOracle
+/// @title  nhNAVOracle
 /// @notice Production-grade NAV Oracle for tokenised European sovereign bond & money market funds.
 /// @dev    Conforms to Chainlink AggregatorV3Interface. Modeled after BlackRock BUIDL, Ondo Finance RWAOracle, and Chainlink NavLink.
 /// @author Ethereum Institutional / Nordhaven Bank
-contract RWAFundNAVOracle is IRWAFundNAVOracle, AccessControl {
+contract nhNAVOracle is InhNAVOracle, AccessControl {
     /* ============ Constants ============ */
 
     uint8 public constant DECIMALS = 8;
@@ -34,7 +34,7 @@ contract RWAFundNAVOracle is IRWAFundNAVOracle, AccessControl {
 
     /* ============ Constructor ============ */
 
-    /// @notice Constructs the RWAFundNAVOracle contract.
+    /// @notice Constructs the nhNAVOracle contract.
     /// @param  admin                Address granted DEFAULT_ADMIN_ROLE.
     /// @param  calculationAgent_    Address granted CALCULATION_AGENT_ROLE (Fund Administrator).
     /// @param  initialNAV           Initial NAV per share with 8 decimals (e.g. 100_00000000 = €100.00).
@@ -67,7 +67,7 @@ contract RWAFundNAVOracle is IRWAFundNAVOracle, AccessControl {
 
     /* ============ Interactive Functions ============ */
 
-    /// @inheritdoc IRWAFundNAVOracle
+    /// @inheritdoc InhNAVOracle
     function submitDailyNAV(int256 navEur, uint256 totalAUM_, uint256 totalShares_, bytes32 auditReportHash)
         external
         onlyRole(CALCULATION_AGENT_ROLE)
@@ -96,7 +96,7 @@ contract RWAFundNAVOracle is IRWAFundNAVOracle, AccessControl {
         emit NAVSubmitted(_roundId, navEur, totalAUM_, totalShares_, auditReportHash, block.timestamp);
     }
 
-    /// @inheritdoc IRWAFundNAVOracle
+    /// @inheritdoc InhNAVOracle
     function setCalculationAgent(address newAgent) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (newAgent == address(0)) revert ZeroAddress();
         address oldAgent = _calculationAgent;
@@ -106,13 +106,13 @@ contract RWAFundNAVOracle is IRWAFundNAVOracle, AccessControl {
         emit CalculationAgentUpdated(oldAgent, newAgent);
     }
 
-    /// @inheritdoc IRWAFundNAVOracle
+    /// @inheritdoc InhNAVOracle
     function setMaxStalenessPeriod(uint256 newPeriod) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _maxStalenessPeriod = newPeriod;
         emit MaxStalenessPeriodUpdated(newPeriod);
     }
 
-    /// @inheritdoc IRWAFundNAVOracle
+    /// @inheritdoc InhNAVOracle
     function setMaxDailyDeviationBps(uint256 newDeviationBps) external onlyRole(DEFAULT_ADMIN_ROLE) {
         _maxDailyDeviationBps = newDeviationBps;
         emit MaxDailyDeviationBpsUpdated(newDeviationBps);
@@ -149,32 +149,32 @@ contract RWAFundNAVOracle is IRWAFundNAVOracle, AccessControl {
         return (_roundId, _price, _updatedAt, _updatedAt, _roundId);
     }
 
-    /// @inheritdoc IRWAFundNAVOracle
+    /// @inheritdoc InhNAVOracle
     function calculationAgent() external view returns (address) {
         return _calculationAgent;
     }
 
-    /// @inheritdoc IRWAFundNAVOracle
+    /// @inheritdoc InhNAVOracle
     function maxStalenessPeriod() external view returns (uint256) {
         return _maxStalenessPeriod;
     }
 
-    /// @inheritdoc IRWAFundNAVOracle
+    /// @inheritdoc InhNAVOracle
     function maxDailyDeviationBps() external view returns (uint256) {
         return _maxDailyDeviationBps;
     }
 
-    /// @inheritdoc IRWAFundNAVOracle
+    /// @inheritdoc InhNAVOracle
     function lastAuditReportHash() external view returns (bytes32) {
         return _lastAuditReportHash;
     }
 
-    /// @inheritdoc IRWAFundNAVOracle
+    /// @inheritdoc InhNAVOracle
     function totalAUM() external view returns (uint256) {
         return _totalAUM;
     }
 
-    /// @inheritdoc IRWAFundNAVOracle
+    /// @inheritdoc InhNAVOracle
     function totalShares() external view returns (uint256) {
         return _totalShares;
     }

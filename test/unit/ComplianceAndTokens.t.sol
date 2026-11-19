@@ -6,12 +6,12 @@ import {InhEUR} from "../../src/interfaces/InhEUR.sol";
 import {IERC3643} from "../interfaces/IERC3643.sol";
 import {IComplianceRegistry} from "../../src/interfaces/IComplianceRegistry.sol";
 import {IBondPriceOracle} from "../../src/interfaces/IBondPriceOracle.sol";
-import {RWAFundNAVOracle} from "../../src/RWAFundNAVOracle.sol";
-import {IRWAFundNAVOracle} from "../../src/interfaces/IRWAFundNAVOracle.sol";
+import {nhNAVOracle} from "../../src/nhNAVOracle.sol";
+import {InhNAVOracle} from "../../src/interfaces/InhNAVOracle.sol";
 import {MockIdentity} from "../mock/MockIdentity.sol";
 
 /// @title  ComplianceAndTokensTest
-/// @notice Unit tests for ComplianceRegistry, nhEUR, nhBOND NAV, and RWAFundNAVOracle.
+/// @notice Unit tests for ComplianceRegistry, nhEUR, nhBOND NAV, and nhNAVOracle.
 /// @author Ethereum Institutional / Nordhaven Bank
 contract ComplianceAndTokensTest is RepoTestBase {
     function test_ComplianceRegistry_Verification() public {
@@ -112,9 +112,9 @@ contract ComplianceAndTokensTest is RepoTestBase {
         assertEq(bondToken.balanceOf(investor), 0);
     }
 
-    function test_RWAFundNAVOracle_LifecycleAndGuards() public {
+    function test_nhNAVOracle_LifecycleAndGuards() public {
         address calcAgent = makeAddr("calcAgent");
-        RWAFundNAVOracle navOracle = new RWAFundNAVOracle(admin, calcAgent, 100_00000000, 86_400, 50);
+        nhNAVOracle navOracle = new nhNAVOracle(admin, calcAgent, 100_00000000, 86_400, 50);
 
         // Verify initial state
         assertEq(navOracle.decimals(), 8);

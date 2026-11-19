@@ -12,11 +12,11 @@ interface AggregatorV3Interface {
         returns (uint80 roundId, int256 answer, uint256 startedAt, uint256 updatedAt, uint80 answeredInRound);
 }
 
-/// @title  IRWAFundNAVOracle
+/// @title  InhNAVOracle
 /// @notice Production NAV Oracle interface for tokenised sovereign bond funds and money market funds.
 /// @dev    Modeled after BlackRock BUIDL, Ondo Finance RWAOracle, and Chainlink NavLink.
 /// @author Ethereum Institutional / Nordhaven Bank
-interface IRWAFundNAVOracle is AggregatorV3Interface {
+interface InhNAVOracle is AggregatorV3Interface {
     /* ============ Events ============ */
 
     event NAVSubmitted(

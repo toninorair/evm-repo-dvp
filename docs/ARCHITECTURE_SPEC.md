@@ -18,7 +18,7 @@ Nordhaven Bank’s Treasury and Securities Financing desk operates an institutio
 This architecture specifies a **24/7, atomic Delivery-versus-Payment (DvP) repurchase agreement engine on public Ethereum (Sepolia)**. It integrates three battle-tested institutional pillars:
 - **Collateral Leg (`nhBOND NAV`):** Strictly implemented using the official **ERC-3643 (T-REX)** token standard, representing tokenised European sovereign bond units valued at continuous Net Asset Value (**`nhBOND NAV`**), incorporating on-chain identity verification (`ONCHAINID`), claim topics, and modular compliance rules.
 - **Cash Leg (`nhEUR`):** Structured as a **Tokenised Commercial Bank Deposit** strictly modeled after **J.P. Morgan’s JPM Coin (`JPMD`)** (deployed on Ethereum Mainnet at `0xb2906cCED1b2c8330480414CeFA1eb52bDBd73A3`), featuring 4-tier banking controls and EIP-2612 gasless atomic permit capabilities.
-- **Real Fund NAV Oracle (`RWAFundNAVOracle`):** A production-grade Net Asset Value (NAV) Oracle modeling real-world tokenized money market funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink’s `AggregatorV3Interface` with calculation agent attestation, staleness heartbeats, and volatility circuit breakers.
+- **Real Fund NAV Oracle (`nhNAVOracle`):** A production-grade Net Asset Value (NAV) Oracle modeling real-world tokenized money market funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink’s `AggregatorV3Interface` with calculation agent attestation, staleness heartbeats, and volatility circuit breakers.
 - **Settlement & Escrow Engine (`RepoDvP`):** Operating as a decentralized tri-party collateral agent with EIP-712 zero-transaction off-chain order execution, Actual/360 money market interest accrual, and programmatic margin management.
 
 ---
@@ -61,7 +61,7 @@ This architecture specifies a **24/7, atomic Delivery-versus-Payment (DvP) repur
      - **`IdentityRegistry` (`IIdentityRegistry`):** Maps counterparty Ethereum addresses to their respective on-chain digital identities (`ONCHAINID`).
      - **`ModularCompliance` (`IModularCompliance`):** Enforces transfer restrictions, qualified institutional investor eligibility, and jurisdictional rules before any transfer executes.
      - **`ClaimTopicsRegistry` & `TrustedIssuersRegistry`:** Ensures only claims signed by trusted institutional KYC issuers (e.g. Nordhaven Compliance Desk) are recognized.
-     - **NAV Valuation Alignment:** Marked to market via `RWAFundNAVOracle`, allowing real-time collateral margin verification against daily fund Net Asset Value.
+     - **NAV Valuation Alignment:** Marked to market via `nhNAVOracle`, allowing real-time collateral margin verification against daily fund Net Asset Value.
 
 2. **`nhEUR.sol` (Tokenised Euro Commercial Bank Deposit - JPM Coin Architecture):**
    - Modeled directly after **J.P. Morgan's JPM Coin (`JPMD`)** (deployed at `0xb2906cCED1b2c8330480414CeFA1eb52bDBd73A3` on Ethereum Mainnet).
@@ -71,7 +71,7 @@ This architecture specifies a **24/7, atomic Delivery-versus-Payment (DvP) repur
      - *Tier 3: Core Banking Clearing Gateway:* Role-based `mint` and `burn` restricted strictly to confirmed fiat settlements in RTGS / TARGET2, emitting banking reconciliation references (`fiatTxRef`).
      - *Tier 4: Supervisory Compliance & Asset Recovery:* Account-level asset freeze under AML/sanctions mandates, forced transfers under court orders, and emergency pause circuit-breakers.
 
-3. **`RWAFundNAVOracle.sol` (Real Money Market Fund NAV Oracle):**
+3. **`nhNAVOracle.sol` (Real Money Market Fund NAV Oracle):**
    - Replaces synthetic mocks with the **production-grade NAV Oracle architecture** utilized by institutional tokenized funds (**BlackRock BUIDL**, **Ondo Finance OUSG `RWAOracle`**, and **VanEck VBILL**).
    - Fully implements Chainlink's **`AggregatorV3Interface`** (`latestRoundData`, `decimals() == 8`).
    - Ingests certified Net Asset Value (NAV) updates submitted by an authorized institutional **Calculation Agent / Fund Administrator** (e.g., BNY Mellon, State Street, or Apex Group).
@@ -181,7 +181,7 @@ When triggered:
 
 ## 6. Contract Interfaces & Data Structures
 
-### 6.1 Real Money Market Fund NAV Oracle Interface (`IRWAFundNAVOracle.sol`)
+### 6.1 Real Money Market Fund NAV Oracle Interface (`InhNAVOracle.sol`)
 
 ```solidity
 // SPDX-License-Identifier: MIT
@@ -201,10 +201,10 @@ interface AggregatorV3Interface {
     );
 }
 
-/// @title  IRWAFundNAVOracle
+/// @title  InhNAVOracle
 /// @notice Production NAV Oracle interface for tokenised sovereign bond funds and money market funds.
 /// @dev    Modeled after BlackRock BUIDL, Ondo Finance RWAOracle, and Chainlink NavLink.
-interface IRWAFundNAVOracle is AggregatorV3Interface {
+interface InhNAVOracle is AggregatorV3Interface {
     event NAVSubmitted(uint80 indexed roundId, int256 navEur, uint256 totalAUM, uint256 totalShares, bytes32 auditHash, uint256 timestamp);
     event CalculationAgentUpdated(address indexed previousAgent, address indexed newAgent);
     event MaxStalenessPeriodUpdated(uint256 newPeriod);

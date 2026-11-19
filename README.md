@@ -47,7 +47,7 @@ This repository delivers a testnet-ready, production-grade Proof of Concept (POC
 ### Institutional Design Choices:
 - **Collateral Leg (`nhBOND NAV`):** Built strictly on the official **ERC-3643 (T-REX)** token standard (`IERC3643`), representing European sovereign bond fund units valued at Net Asset Value (NAV). Enforces on-chain identity verification (`IdentityRegistry` / `ONCHAINID`), modular transfer rules (`ModularCompliance`), partial/wallet freezing, and regulatory forced transfers.
 - **Cash Leg (`nhEUR`):** Structured as an institutional **Tokenised Commercial Bank Deposit** strictly modeled after **J.P. Morgan's JPM Coin (`JPMD`)** (deployed at `0xb2906cCED1b2c8330480414CeFA1eb52bDBd73A3` on Ethereum Mainnet). Incorporates a 4-tier banking control model and EIP-2612 gasless permits for 1-transaction atomic DvP settlement.
-- **Real Fund NAV Oracle (`RWAFundNAVOracle`):** Modeled after institutional tokenized money market funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink's `AggregatorV3Interface` with calculation agent attestations, a 24-hour staleness heartbeat, and a 50 bps daily deviation circuit breaker.
+- **Real Fund NAV Oracle (`nhNAVOracle`):** Modeled after institutional tokenized money market funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink's `AggregatorV3Interface` with calculation agent attestations, a 24-hour staleness heartbeat, and a 50 bps daily deviation circuit breaker.
 - **Settlement & Escrow (`RepoDvP`):** Functions as an automated decentralized **Tri-Party Collateral Agent** under the EU Financial Collateral Directive (Directive 2002/47/EC), eliminating counterparty rehypothecation and settlement failure risk.
 
 ---
@@ -69,11 +69,11 @@ evm-dvp-repo/
 │   ├── nhBOND.sol                        # Tokenised sovereign bond NAV deriving from ERC-3643
 │   ├── nhEUR.sol                         # Tokenised EUR commercial bank deposit (JPM Coin model)
 │   ├── RepoDvP.sol                       # Core DvP/RvP settlement and margin engine
-│   ├── RWAFundNAVOracle.sol              # Production RWA MMF NAV Oracle (BUIDL / OUSG model)
+│   ├── nhNAVOracle.sol                   # Production RWA MMF NAV Oracle (BUIDL / OUSG model)
 │   └── interfaces/
 │       ├── IBondPriceOracle.sol
 │       ├── IComplianceRegistry.sol
-│       ├── IRWAFundNAVOracle.sol
+│       ├── InhNAVOracle.sol
 │       ├── IRepoDvP.sol
 │       ├── IRepoTypes.sol
 │       ├── InhBOND.sol
@@ -135,7 +135,7 @@ Ran 5 test suites: 24 tests passed, 0 failed, 0 skipped
 - test_ERC3643_AddressFreezing (PASS)
 - test_ERC3643_BatchOperations (PASS)
 - test_ERC3643_RecoveryAddress (PASS)
-- test_RWAFundNAVOracle_LifecycleAndGuards (PASS)
+- test_nhNAVOracle_LifecycleAndGuards (PASS)
 - test_AtomicDvP_OpeningLeg (PASS)
 - test_ClosingLeg_RvP_Settlement_AtMaturity (PASS)
 - test_EIP712_ExecuteRepoOrder_ZeroTxNegotiation (PASS)
@@ -203,8 +203,8 @@ forge verify-contract <NH_EUR_ADDRESS> src/nhEUR.sol:nhEUR \
   --constructor-args $(cast abi-encode "constructor(address,address,address,address)" $ADMIN $TREASURY $COMPLIANCE $REGISTRY) \
   --etherscan-api-key $ETHERSCAN_API_KEY
 
-# Verify RWAFundNAVOracle
-forge verify-contract <ORACLE_ADDRESS> src/RWAFundNAVOracle.sol:RWAFundNAVOracle \
+# Verify nhNAVOracle
+forge verify-contract <ORACLE_ADDRESS> src/nhNAVOracle.sol:nhNAVOracle \
   --chain-id 11155111 \
   --constructor-args $(cast abi-encode "constructor(address,address,int256,uint256,uint256)" $ADMIN $CALC_AGENT 10000000000 86400 50) \
   --etherscan-api-key $ETHERSCAN_API_KEY

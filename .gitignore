@@ -1,0 +1,30 @@
+# Compiler files
+cache/
+out/
+broadcast/
+
+# Claude
+CLAUDE.md
+
+# Coverage files
+coverage/
+lcov.info
+
+# Docs
+docs/*
+!docs/*.md
+
+# Dotenv file
+.env
+
+# Mac OS files
+.DS_Store
+
+# NPM modules
+node_modules
+
+# Soljson
+soljson-latest.js
+
+# Gas report
+gasreport.ansi

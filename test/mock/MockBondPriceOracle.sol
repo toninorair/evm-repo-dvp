@@ -2,7 +2,7 @@
 pragma solidity 0.8.34;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IBondPriceOracle} from "../../src/periphery/interfaces/IBondPriceOracle.sol";
+import {IBondPriceOracle} from "../../src/interfaces/IBondPriceOracle.sol";
 
 /// @title  MockBondPriceOracle
 /// @notice Mock Chainlink AggregatorV3 price feed reporting EUR sovereign bond prices.

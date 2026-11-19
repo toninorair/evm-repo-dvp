@@ -6,7 +6,7 @@ import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20P
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
 
-import {IComplianceRegistry} from "../abstract/interfaces/IComplianceRegistry.sol";
+import {IComplianceRegistry} from "./interfaces/IComplianceRegistry.sol";
 import {InhEUR} from "./interfaces/InhEUR.sol";
 
 /// @title  nhEUR

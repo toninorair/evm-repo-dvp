@@ -3,11 +3,11 @@ pragma solidity 0.8.34;
 
 import {Test} from "forge-std/Test.sol";
 
-import {ComplianceRegistry} from "../../src/abstract/ComplianceRegistry.sol";
+import {ComplianceRegistry} from "../../src/ComplianceRegistry.sol";
 import {MockBondPriceOracle} from "../mock/MockBondPriceOracle.sol";
-import {nhEUR} from "../../src/core/nhEUR.sol";
-import {RepoDvP} from "../../src/core/RepoDvP.sol";
-import {IRepoTypes} from "../../src/core/interfaces/IRepoTypes.sol";
+import {nhEUR} from "../../src/nhEUR.sol";
+import {RepoDvP} from "../../src/RepoDvP.sol";
+import {IRepoTypes} from "../../src/interfaces/IRepoTypes.sol";
 
 import {IERC3643} from "../interfaces/IERC3643.sol";
 import {IERC3643ClaimTopicsRegistry} from "../interfaces/IERC3643ClaimTopicsRegistry.sol";
@@ -16,7 +16,7 @@ import {IERC3643IdentityRegistryStorage} from "../interfaces/IERC3643IdentityReg
 import {IERC3643IdentityRegistry} from "../interfaces/IERC3643IdentityRegistry.sol";
 import {IERC3643Compliance} from "../interfaces/IERC3643Compliance.sol";
 import {IIdentity} from "../interfaces/IIdentity.sol";
-import {InhBOND} from "../../src/core/interfaces/InhBOND.sol";
+import {InhBOND} from "../../src/interfaces/InhBOND.sol";
 import {ITestBond} from "../interfaces/ITestBond.sol";
 import {ITREXDeployer} from "../../script/helper/ITREXDeployer.sol";
 import {MockIdentity} from "../mock/MockIdentity.sol";

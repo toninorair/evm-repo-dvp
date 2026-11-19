@@ -2,12 +2,12 @@
 pragma solidity 0.8.34;
 
 import {RepoTestBase} from "../utils/RepoTestBase.sol";
-import {InhEUR} from "../../src/core/interfaces/InhEUR.sol";
+import {InhEUR} from "../../src/interfaces/InhEUR.sol";
 import {IERC3643} from "../interfaces/IERC3643.sol";
-import {IComplianceRegistry} from "../../src/abstract/interfaces/IComplianceRegistry.sol";
-import {IBondPriceOracle} from "../../src/periphery/interfaces/IBondPriceOracle.sol";
-import {RWAFundNAVOracle} from "../../src/periphery/RWAFundNAVOracle.sol";
-import {IRWAFundNAVOracle} from "../../src/periphery/interfaces/IRWAFundNAVOracle.sol";
+import {IComplianceRegistry} from "../../src/interfaces/IComplianceRegistry.sol";
+import {IBondPriceOracle} from "../../src/interfaces/IBondPriceOracle.sol";
+import {RWAFundNAVOracle} from "../../src/RWAFundNAVOracle.sol";
+import {IRWAFundNAVOracle} from "../../src/interfaces/IRWAFundNAVOracle.sol";
 import {MockIdentity} from "../mock/MockIdentity.sol";
 
 /// @title  ComplianceAndTokensTest

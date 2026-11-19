@@ -2,7 +2,7 @@
 pragma solidity 0.8.34;
 
 import {RepoTestBase} from "../utils/RepoTestBase.sol";
-import {IRepoDvP} from "../../src/core/interfaces/IRepoDvP.sol";
+import {IRepoDvP} from "../../src/interfaces/IRepoDvP.sol";
 
 /// @title  MarginAndDefaultTest
 /// @notice Integration tests for dynamic mark-to-market margin calls, top-ups, and default liquidations.

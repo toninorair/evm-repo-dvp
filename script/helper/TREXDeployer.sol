@@ -8,7 +8,7 @@ import "ERC-3643/registry/implementation/IdentityRegistry.sol";
 import "ERC-3643/compliance/modular/ModularCompliance.sol";
 import "@onchain-id/solidity/contracts/Identity.sol";
 
-import "../../src/core/nhBOND.sol";
+import "../../src/nhBOND.sol";
 import "./ITREXDeployer.sol";
 
 /// @title  TREXDeployer

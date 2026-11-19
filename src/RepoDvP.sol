@@ -9,8 +9,8 @@ import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
-import {IComplianceRegistry} from "../abstract/interfaces/IComplianceRegistry.sol";
-import {IBondPriceOracle} from "../periphery/interfaces/IBondPriceOracle.sol";
+import {IComplianceRegistry} from "./interfaces/IComplianceRegistry.sol";
+import {IBondPriceOracle} from "./interfaces/IBondPriceOracle.sol";
 import {IRepoDvP} from "./interfaces/IRepoDvP.sol";
 
 /// @title  RepoDvP

@@ -4,11 +4,11 @@ pragma solidity 0.8.34;
 import {Script} from "forge-std/Script.sol";
 import {console2} from "forge-std/console2.sol";
 
-import {ComplianceRegistry} from "../../src/abstract/ComplianceRegistry.sol";
-import {RWAFundNAVOracle} from "../../src/periphery/RWAFundNAVOracle.sol";
-import {nhEUR} from "../../src/core/nhEUR.sol";
-import {RepoDvP} from "../../src/core/RepoDvP.sol";
-import {InhBOND} from "../../src/core/interfaces/InhBOND.sol";
+import {ComplianceRegistry} from "../../src/ComplianceRegistry.sol";
+import {RWAFundNAVOracle} from "../../src/RWAFundNAVOracle.sol";
+import {nhEUR} from "../../src/nhEUR.sol";
+import {RepoDvP} from "../../src/RepoDvP.sol";
+import {InhBOND} from "../../src/interfaces/InhBOND.sol";
 import {IERC3643IdentityRegistry} from "../../test/interfaces/IERC3643IdentityRegistry.sol";
 import {IIdentity} from "../../test/interfaces/IIdentity.sol";
 import {ITREXDeployer} from "../helper/ITREXDeployer.sol";

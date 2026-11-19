@@ -2,11 +2,11 @@
 pragma solidity 0.8.34;
 
 import {Test} from "forge-std/Test.sol";
-import {RepoDvP} from "../../src/core/RepoDvP.sol";
-import {nhEUR} from "../../src/core/nhEUR.sol";
-import {InhBOND} from "../../src/core/interfaces/InhBOND.sol";
+import {RepoDvP} from "../../src/RepoDvP.sol";
+import {nhEUR} from "../../src/nhEUR.sol";
+import {InhBOND} from "../../src/interfaces/InhBOND.sol";
 import {ITestBond} from "../interfaces/ITestBond.sol";
-import {IRepoTypes} from "../../src/core/interfaces/IRepoTypes.sol";
+import {IRepoTypes} from "../../src/interfaces/IRepoTypes.sol";
 
 /// @title  RepoHandler
 /// @notice Fuzz invariant handler generating bounded, valid repo actions.

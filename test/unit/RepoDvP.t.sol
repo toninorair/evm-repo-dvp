@@ -2,7 +2,7 @@
 pragma solidity 0.8.34;
 
 import {RepoTestBase} from "../utils/RepoTestBase.sol";
-import {IRepoDvP} from "../../src/core/interfaces/IRepoDvP.sol";
+import {IRepoDvP} from "../../src/interfaces/IRepoDvP.sol";
 
 /// @title  RepoDvPTest
 /// @notice Unit tests for RepoDvP settlement engine covering DvP, RvP, and EIP-712 orders.

@@ -65,23 +65,19 @@ evm-dvp-repo/
 │   ├── forge-std/                        # Foundry standard testing library
 │   └── openzeppelin-contracts/           # OpenZeppelin Contracts v5.7.0
 ├── src/
-│   ├── abstract/
-│   │   ├── ComplianceRegistry.sol        # KYC/AML institutional identity registry (for nhEUR / DvP)
-│   │   └── interfaces/
-│   │       └── IComplianceRegistry.sol
-│   ├── core/
-│   │   ├── nhEUR.sol                     # Tokenised EUR commercial bank deposit (JPM Coin model)
-│   │   ├── RepoDvP.sol                   # Core DvP/RvP settlement and margin engine
-│   │   └── interfaces/
-│   │       ├── InhBOND.sol               # Sovereign bond banking interface
-│   │       ├── InhEUR.sol                # Tokenised deposit interface
-│   │       ├── IRepoTypes.sol            # Data structs, status enums, and order formats
-│   │       └── IRepoDvP.sol              # Settlement engine interface
-│   └── periphery/
-│       ├── RWAFundNAVOracle.sol          # Production RWA MMF NAV Oracle (BUIDL / OUSG model)
-│       └── interfaces/
-│           ├── IRWAFundNAVOracle.sol
-│           └── IBondPriceOracle.sol
+│   ├── ComplianceRegistry.sol            # KYC/AML institutional identity registry (for nhEUR / DvP)
+│   ├── nhBOND.sol                        # Tokenised sovereign bond NAV deriving from ERC-3643
+│   ├── nhEUR.sol                         # Tokenised EUR commercial bank deposit (JPM Coin model)
+│   ├── RepoDvP.sol                       # Core DvP/RvP settlement and margin engine
+│   ├── RWAFundNAVOracle.sol              # Production RWA MMF NAV Oracle (BUIDL / OUSG model)
+│   └── interfaces/
+│       ├── IBondPriceOracle.sol
+│       ├── IComplianceRegistry.sol
+│       ├── IRWAFundNAVOracle.sol
+│       ├── IRepoDvP.sol
+│       ├── IRepoTypes.sol
+│       ├── InhBOND.sol
+│       └── InhEUR.sol
 ├── test/
 │   ├── interfaces/                       # Authentic ERC-3643 & test bond interfaces
 │   │   ├── IERC3643.sol
@@ -196,25 +192,25 @@ forge script script/deploy/DeployAll.s.sol \
 If Etherscan’s API experiences delays during broadcast, verify manually:
 ```bash
 # Verify RepoDvP
-forge verify-contract <REPO_DVP_ADDRESS> src/core/RepoDvP.sol:RepoDvP \
+forge verify-contract <REPO_DVP_ADDRESS> src/RepoDvP.sol:RepoDvP \
   --chain-id 11155111 \
   --constructor-args $(cast abi-encode "constructor(address,address,address)" $ADMIN $REGISTRY $ORACLE) \
   --etherscan-api-key $ETHERSCAN_API_KEY
 
 # Verify nhEUR
-forge verify-contract <NH_EUR_ADDRESS> src/core/nhEUR.sol:nhEUR \
+forge verify-contract <NH_EUR_ADDRESS> src/nhEUR.sol:nhEUR \
   --chain-id 11155111 \
   --constructor-args $(cast abi-encode "constructor(address,address,address,address)" $ADMIN $TREASURY $COMPLIANCE $REGISTRY) \
   --etherscan-api-key $ETHERSCAN_API_KEY
 
 # Verify RWAFundNAVOracle
-forge verify-contract <ORACLE_ADDRESS> src/periphery/RWAFundNAVOracle.sol:RWAFundNAVOracle \
+forge verify-contract <ORACLE_ADDRESS> src/RWAFundNAVOracle.sol:RWAFundNAVOracle \
   --chain-id 11155111 \
   --constructor-args $(cast abi-encode "constructor(address,address,int256,uint256,uint256)" $ADMIN $CALC_AGENT 10000000000 86400 50) \
   --etherscan-api-key $ETHERSCAN_API_KEY
 
 # Verify nhBOND NAV (Official ERC-3643 / T-REX Security Token)
-forge verify-contract <NH_BOND_ADDRESS> lib/ERC-3643/contracts/token/Token.sol:Token \
+forge verify-contract <NH_BOND_ADDRESS> src/nhBOND.sol:nhBOND \
   --chain-id 11155111 \
   --etherscan-api-key $ETHERSCAN_API_KEY
 ```

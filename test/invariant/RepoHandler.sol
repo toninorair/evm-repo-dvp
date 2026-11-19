@@ -4,7 +4,8 @@ pragma solidity 0.8.34;
 import {Test} from "forge-std/Test.sol";
 import {RepoDvP} from "../../src/core/RepoDvP.sol";
 import {nhEUR} from "../../src/core/nhEUR.sol";
-import {IERC3643} from "../../src/core/interfaces/erc3643/IERC3643.sol";
+import {InhBOND} from "../../src/core/interfaces/InhBOND.sol";
+import {ITestBond} from "../interfaces/ITestBond.sol";
 import {IRepoTypes} from "../../src/core/interfaces/IRepoTypes.sol";
 
 /// @title  RepoHandler
@@ -13,7 +14,7 @@ import {IRepoTypes} from "../../src/core/interfaces/IRepoTypes.sol";
 contract RepoHandler is Test, IRepoTypes {
     RepoDvP internal repoDvP;
     nhEUR internal cashToken;
-    IERC3643 internal bondToken;
+    ITestBond internal bondToken;
 
     address internal bankA;
     address internal bankB;
@@ -22,7 +23,7 @@ contract RepoHandler is Test, IRepoTypes {
     constructor(
         RepoDvP _repoDvP,
         nhEUR _cashToken,
-        IERC3643 _bondToken,
+        ITestBond _bondToken,
         address _bankA,
         address _bankB,
         address _treasury

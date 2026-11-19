@@ -9,13 +9,15 @@ import {nhEUR} from "../../src/core/nhEUR.sol";
 import {RepoDvP} from "../../src/core/RepoDvP.sol";
 import {IRepoTypes} from "../../src/core/interfaces/IRepoTypes.sol";
 
-import {IERC3643} from "../../src/core/interfaces/erc3643/IERC3643.sol";
-import {IERC3643ClaimTopicsRegistry} from "../../src/core/interfaces/erc3643/IERC3643ClaimTopicsRegistry.sol";
-import {IERC3643TrustedIssuersRegistry} from "../../src/core/interfaces/erc3643/IERC3643TrustedIssuersRegistry.sol";
-import {IERC3643IdentityRegistryStorage} from "../../src/core/interfaces/erc3643/IERC3643IdentityRegistryStorage.sol";
-import {IERC3643IdentityRegistry} from "../../src/core/interfaces/erc3643/IERC3643IdentityRegistry.sol";
-import {IERC3643Compliance} from "../../src/core/interfaces/erc3643/IERC3643Compliance.sol";
-import {IIdentity} from "../../src/core/interfaces/erc3643/IIdentity.sol";
+import {IERC3643} from "../interfaces/IERC3643.sol";
+import {IERC3643ClaimTopicsRegistry} from "../interfaces/IERC3643ClaimTopicsRegistry.sol";
+import {IERC3643TrustedIssuersRegistry} from "../interfaces/IERC3643TrustedIssuersRegistry.sol";
+import {IERC3643IdentityRegistryStorage} from "../interfaces/IERC3643IdentityRegistryStorage.sol";
+import {IERC3643IdentityRegistry} from "../interfaces/IERC3643IdentityRegistry.sol";
+import {IERC3643Compliance} from "../interfaces/IERC3643Compliance.sol";
+import {IIdentity} from "../interfaces/IIdentity.sol";
+import {InhBOND} from "../../src/core/interfaces/InhBOND.sol";
+import {ITestBond} from "../interfaces/ITestBond.sol";
 import {ITREXDeployer} from "../../script/helper/ITREXDeployer.sol";
 import {MockIdentity} from "../mock/MockIdentity.sol";
 
@@ -48,7 +50,7 @@ abstract contract RepoTestBase is Test, IRepoTypes {
     ComplianceRegistry internal complianceRegistry;
     MockBondPriceOracle internal oracle;
     nhEUR internal cashToken;
-    IERC3643 internal bondToken;
+    ITestBond internal bondToken;
     RepoDvP internal repoDvP;
 
     /* ============ Constants ============ */
@@ -80,7 +82,7 @@ abstract contract RepoTestBase is Test, IRepoTypes {
         identityRegistryStorage = IERC3643IdentityRegistryStorage(suite.identityRegistryStorage);
         identityRegistry = IERC3643IdentityRegistry(suite.identityRegistry);
         modularCompliance = IERC3643Compliance(suite.modularCompliance);
-        bondToken = IERC3643(suite.token);
+        bondToken = ITestBond(suite.token);
 
         // 2. Deploy Compliance Registry (for nhEUR / RepoDvP)
         complianceRegistry = new ComplianceRegistry(admin, compliance);

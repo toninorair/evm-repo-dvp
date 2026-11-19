@@ -8,9 +8,9 @@ import {ComplianceRegistry} from "../../src/abstract/ComplianceRegistry.sol";
 import {RWAFundNAVOracle} from "../../src/periphery/RWAFundNAVOracle.sol";
 import {nhEUR} from "../../src/core/nhEUR.sol";
 import {RepoDvP} from "../../src/core/RepoDvP.sol";
-import {IERC3643} from "../../src/core/interfaces/erc3643/IERC3643.sol";
-import {IERC3643IdentityRegistry} from "../../src/core/interfaces/erc3643/IERC3643IdentityRegistry.sol";
-import {IIdentity} from "../../src/core/interfaces/erc3643/IIdentity.sol";
+import {InhBOND} from "../../src/core/interfaces/InhBOND.sol";
+import {IERC3643IdentityRegistry} from "../../test/interfaces/IERC3643IdentityRegistry.sol";
+import {IIdentity} from "../../test/interfaces/IIdentity.sol";
 import {ITREXDeployer} from "../helper/ITREXDeployer.sol";
 
 /// @title  DeployAll
@@ -27,7 +27,7 @@ contract DeployAll is Script {
             ComplianceRegistry complianceRegistry,
             RWAFundNAVOracle oracle,
             nhEUR cashToken,
-            IERC3643 bondToken,
+            InhBOND bondToken,
             RepoDvP repoDvP
         )
     {
@@ -57,7 +57,7 @@ contract DeployAll is Script {
             18
         );
         IERC3643IdentityRegistry identityRegistry = IERC3643IdentityRegistry(suite.identityRegistry);
-        bondToken = IERC3643(suite.token);
+        bondToken = InhBOND(suite.token);
         console2.log("IdentityRegistry deployed at:", address(identityRegistry));
 
         // 2. Deploy RWA Fund NAV Oracle (Chainlink AggregatorV3 compatible)
@@ -86,7 +86,7 @@ contract DeployAll is Script {
 
         // 7. Seed Deployer with Demo Liquidity
         cashToken.mint(deployer, INITIAL_DEMO_CASH, "SEPOLIA-DEMO-SEED");
-        bondToken.mint(deployer, INITIAL_DEMO_BONDS);
+        bondToken.issue(deployer, INITIAL_DEMO_BONDS);
 
         vm.stopBroadcast();
 

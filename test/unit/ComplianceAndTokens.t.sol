@@ -3,7 +3,7 @@ pragma solidity 0.8.34;
 
 import {RepoTestBase} from "../utils/RepoTestBase.sol";
 import {InhEUR} from "../../src/core/interfaces/InhEUR.sol";
-import {IERC3643} from "../../src/core/interfaces/erc3643/IERC3643.sol";
+import {IERC3643} from "../interfaces/IERC3643.sol";
 import {IComplianceRegistry} from "../../src/abstract/interfaces/IComplianceRegistry.sol";
 import {IBondPriceOracle} from "../../src/periphery/interfaces/IBondPriceOracle.sol";
 import {RWAFundNAVOracle} from "../../src/periphery/RWAFundNAVOracle.sol";
@@ -77,6 +77,39 @@ contract ComplianceAndTokensTest is RepoTestBase {
         assertEq(bondToken.name(), "Nordhaven Sovereign Bond NAV");
         assertEq(bondToken.symbol(), "nhBOND NAV");
         assertEq(bondToken.decimals(), 18);
+        assertEq(bondToken.isin(), "DE0001102580");
+        assertEq(bondToken.couponRateBps(), 250);
+        assertFalse(bondToken.isMatured());
+    }
+
+    function test_nhBOND_InvestorEligibility() public {
+        assertTrue(bondToken.isEligibleInvestor(bankA));
+        assertTrue(bondToken.isEligibleInvestor(bankB));
+        assertFalse(bondToken.isEligibleInvestor(makeAddr("unverifiedTrader")));
+    }
+
+    function test_nhBOND_Issue_And_Redeem_Lifecycle() public {
+        uint256 issueAmount = 10_000 ether;
+        address investor = bankB;
+
+        // 1. Issue bonds via banking issue helper (onlyAgent)
+        vm.prank(compliance);
+        bondToken.issue(investor, issueAmount);
+        assertEq(bondToken.balanceOf(investor), issueAmount);
+
+        // 2. Redeem before maturity reverts with BondNotMatured
+        vm.prank(compliance);
+        vm.expectRevert();
+        bondToken.redeem(investor, issueAmount);
+
+        // 3. Fast-forward past maturity date
+        vm.warp(bondToken.maturityDate() + 1);
+        assertTrue(bondToken.isMatured());
+
+        // 4. Redeem after maturity succeeds and burns tokens
+        vm.prank(compliance);
+        bondToken.redeem(investor, issueAmount);
+        assertEq(bondToken.balanceOf(investor), 0);
     }
 
     function test_RWAFundNAVOracle_LifecycleAndGuards() public {

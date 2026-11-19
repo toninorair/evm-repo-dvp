@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {IIdentity} from "../../src/core/interfaces/erc3643/IIdentity.sol";
+import {IIdentity} from "../interfaces/IIdentity.sol";
 
 /// @title MockIdentity
 /// @notice Lightweight ONCHAINID mock contract for institutional counterparty testing.

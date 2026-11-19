@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "ERC-3643/token/Token.sol";
 import "ERC-3643/registry/implementation/ClaimTopicsRegistry.sol";
 import "ERC-3643/registry/implementation/TrustedIssuersRegistry.sol";
 import "ERC-3643/registry/implementation/IdentityRegistryStorage.sol";
@@ -9,19 +8,13 @@ import "ERC-3643/registry/implementation/IdentityRegistry.sol";
 import "ERC-3643/compliance/modular/ModularCompliance.sol";
 import "@onchain-id/solidity/contracts/Identity.sol";
 
-/// @title  TREXDeployer
-/// @notice Deployer for authentic ERC-3643 (T-REX v4) smart contracts.
-/// @dev    Compiled under Solc 0.8.17 to match official T-REX framework requirements.
-contract TREXDeployer {
-    struct TREXSuite {
-        address claimTopicsRegistry;
-        address trustedIssuersRegistry;
-        address identityRegistryStorage;
-        address identityRegistry;
-        address modularCompliance;
-        address token;
-    }
+import "../../src/core/nhBOND.sol";
+import "./ITREXDeployer.sol";
 
+/// @title  TREXDeployer
+/// @notice Deployer bridge compiled with Solc 0.8.17 that instantiates the authentic
+///         ERC-3643 (T-REX) framework and derived nhBOND token.
+contract TREXDeployer is ITREXDeployer {
     function deploySuite(
         address admin,
         address compliance,
@@ -30,61 +23,124 @@ contract TREXDeployer {
         string memory tokenSymbol,
         uint8 decimals
     ) external returns (TREXSuite memory suite) {
-        // 1. Deploy & Init ClaimTopicsRegistry
-        ClaimTopicsRegistry ctr = new ClaimTopicsRegistry();
-        ctr.init();
+        BondDetails memory details = BondDetails({
+            tokenName: tokenName,
+            tokenSymbol: tokenSymbol,
+            decimals: decimals,
+            isin: "DE0001102580",
+            maturityDate: block.timestamp + 365 days,
+            couponRateBps: 250,
+            navOracle: address(0)
+        });
+        return deployBondSuite(admin, compliance, issuer, details);
+    }
 
-        // 2. Deploy & Init TrustedIssuersRegistry
-        TrustedIssuersRegistry tir = new TrustedIssuersRegistry();
-        tir.init();
+    function deployBondSuite(
+        address admin,
+        address compliance,
+        address issuer,
+        BondDetails memory bondDetails
+    ) public returns (TREXSuite memory suite) {
+        (
+            suite.claimTopicsRegistry,
+            suite.trustedIssuersRegistry,
+            suite.identityRegistryStorage,
+            suite.identityRegistry
+        ) = _deployRegistries(admin);
 
-        // 3. Deploy & Init IdentityRegistryStorage
-        IdentityRegistryStorage irs = new IdentityRegistryStorage();
-        irs.init();
-
-        // 4. Deploy & Init IdentityRegistry
-        IdentityRegistry ir = new IdentityRegistry();
-        ir.init(address(tir), address(ctr), address(irs));
-        irs.bindIdentityRegistry(address(ir));
-
-        // 5. Deploy & Init ModularCompliance
         ModularCompliance mc = new ModularCompliance();
         mc.init();
+        suite.modularCompliance = address(mc);
 
-        // 6. Deploy & Init Token
-        Token tok = new Token();
-        tok.init(address(ir), address(mc), tokenName, tokenSymbol, decimals, address(0));
+        suite.token = _deployToken(
+            suite.identityRegistry,
+            suite.modularCompliance,
+            bondDetails
+        );
 
-        // Bind token to ModularCompliance
-        mc.bindToken(address(tok));
+        _configurePermissions(
+            suite.token,
+            suite.identityRegistry,
+            suite.modularCompliance,
+            compliance,
+            issuer,
+            admin
+        );
+    }
 
-        // Setup Agent permissions on Token
+    function _deployRegistries(
+        address admin
+    ) internal returns (address ctrAddr, address tirAddr, address irsAddr, address irAddr) {
+        ClaimTopicsRegistry ctr = new ClaimTopicsRegistry();
+        ctr.init();
+        ctr.transferOwnership(admin);
+        ctrAddr = address(ctr);
+
+        TrustedIssuersRegistry tir = new TrustedIssuersRegistry();
+        tir.init();
+        tir.transferOwnership(admin);
+        tirAddr = address(tir);
+
+        IdentityRegistryStorage irs = new IdentityRegistryStorage();
+        irs.init();
+        irsAddr = address(irs);
+
+        IdentityRegistry ir = new IdentityRegistry();
+        ir.init(tirAddr, ctrAddr, irsAddr);
+        irs.bindIdentityRegistry(address(ir));
+        irs.transferOwnership(admin);
+        irAddr = address(ir);
+    }
+
+    function _deployToken(
+        address ir,
+        address mc,
+        BondDetails memory bondDetails
+    ) internal returns (address) {
+        nhBOND tok = new nhBOND();
+        tok.init(
+            ir,
+            mc,
+            bondDetails.tokenName,
+            bondDetails.tokenSymbol,
+            bondDetails.decimals,
+            address(0)
+        );
+        tok.setBondDetails(
+            bondDetails.isin,
+            bondDetails.maturityDate,
+            bondDetails.couponRateBps,
+            bondDetails.navOracle
+        );
+        return address(tok);
+    }
+
+    function _configurePermissions(
+        address tokAddr,
+        address irAddr,
+        address mcAddr,
+        address compliance,
+        address issuer,
+        address admin
+    ) internal {
+        nhBOND tok = nhBOND(tokAddr);
+        IdentityRegistry ir = IdentityRegistry(irAddr);
+        ModularCompliance mc = ModularCompliance(mcAddr);
+
+        mc.bindToken(tokAddr);
+
         tok.addAgent(address(this));
         tok.unpause();
         tok.removeAgent(address(this));
         if (!tok.isAgent(compliance)) tok.addAgent(compliance);
         if (!tok.isAgent(issuer)) tok.addAgent(issuer);
 
-        // Setup Agent permissions on IdentityRegistry
         if (!ir.isAgent(compliance)) ir.addAgent(compliance);
-        if (!ir.isAgent(address(tok))) ir.addAgent(address(tok));
+        if (!ir.isAgent(tokAddr)) ir.addAgent(tokAddr);
 
-        // Transfer ownership of all contracts to designated admin
-        ctr.transferOwnership(admin);
-        tir.transferOwnership(admin);
-        irs.transferOwnership(admin);
         ir.transferOwnership(admin);
         mc.transferOwnership(admin);
         tok.transferOwnership(admin);
-
-        suite = TREXSuite({
-            claimTopicsRegistry: address(ctr),
-            trustedIssuersRegistry: address(tir),
-            identityRegistryStorage: address(irs),
-            identityRegistry: address(ir),
-            modularCompliance: address(mc),
-            token: address(tok)
-        });
     }
 
     function deployIdentity(address initialManagementKey) external returns (address) {

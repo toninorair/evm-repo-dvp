@@ -164,6 +164,12 @@ Ran 5 test suites: 24 tests passed, 0 failed, 0 skipped
 
 ---
 
+## 3b. Settlement Console (web app)
+
+A Vite + React + viem front end lives in [`app/`](app/README.md). Run `npm --prefix app install && npm run app:dev`. With no addresses configured it opens in demo mode; set `app/.env` from `app/.env.example` to point it at a Sepolia deployment.
+
+---
+
 ## 4. Sepolia Testnet Deployment & Etherscan Verification
 
 ### 1. Configure `.env`

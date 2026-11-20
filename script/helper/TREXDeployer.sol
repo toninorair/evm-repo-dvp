@@ -52,20 +52,9 @@ contract TREXDeployer is ITREXDeployer {
         mc.init();
         suite.modularCompliance = address(mc);
 
-        suite.token = _deployToken(
-            suite.identityRegistry,
-            suite.modularCompliance,
-            bondDetails
-        );
+        suite.token = _deployToken(suite.identityRegistry, suite.modularCompliance, bondDetails);
 
-        _configurePermissions(
-            suite.token,
-            suite.identityRegistry,
-            suite.modularCompliance,
-            compliance,
-            issuer,
-            admin
-        );
+        _configurePermissions(suite.token, suite.identityRegistry, suite.modularCompliance, compliance, issuer, admin);
     }
 
     function _deployRegistries(
@@ -92,20 +81,9 @@ contract TREXDeployer is ITREXDeployer {
         irAddr = address(ir);
     }
 
-    function _deployToken(
-        address ir,
-        address mc,
-        BondDetails memory bondDetails
-    ) internal returns (address) {
+    function _deployToken(address ir, address mc, BondDetails memory bondDetails) internal returns (address) {
         nhBOND tok = new nhBOND();
-        tok.init(
-            ir,
-            mc,
-            bondDetails.tokenName,
-            bondDetails.tokenSymbol,
-            bondDetails.decimals,
-            address(0)
-        );
+        tok.init(ir, mc, bondDetails.tokenName, bondDetails.tokenSymbol, bondDetails.decimals, address(0));
         tok.setBondDetails(
             bondDetails.isin,
             bondDetails.maturityDate,

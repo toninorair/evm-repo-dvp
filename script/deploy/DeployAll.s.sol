@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {Script} from "forge-std/Script.sol";
-import {console2} from "forge-std/console2.sol";
+import { Script } from "forge-std/Script.sol";
+import { console2 } from "forge-std/console2.sol";
 
-import {ComplianceRegistry} from "../../src/ComplianceRegistry.sol";
-import {nhNAVOracle} from "../../src/nhNAVOracle.sol";
-import {nhEUR} from "../../src/nhEUR.sol";
-import {RepoDvP} from "../../src/RepoDvP.sol";
-import {InhBOND} from "../../src/interfaces/InhBOND.sol";
-import {IERC3643IdentityRegistry} from "../../test/interfaces/IERC3643IdentityRegistry.sol";
-import {IIdentity} from "../../test/interfaces/IIdentity.sol";
-import {ITREXDeployer} from "../helper/ITREXDeployer.sol";
+import { ComplianceRegistry } from "../../src/ComplianceRegistry.sol";
+import { nhNAVOracle } from "../../src/nhNAVOracle.sol";
+import { nhEUR } from "../../src/nhEUR.sol";
+import { RepoDvP } from "../../src/RepoDvP.sol";
+import { InhBOND } from "../../src/interfaces/InhBOND.sol";
+import { IERC3643IdentityRegistry } from "../../test/interfaces/IERC3643IdentityRegistry.sol";
+import { IIdentity } from "../../test/interfaces/IIdentity.sol";
+import { ITREXDeployer } from "../helper/ITREXDeployer.sol";
 
 /// @title  DeployAll
 /// @notice Foundry deployment script for Nordhaven DvP Repo contracts on Sepolia or local testnet.
@@ -32,7 +32,8 @@ contract DeployAll is Script {
         )
     {
         uint256 deployerPrivateKey = vm.envOr(
-            "PRIVATE_KEY", uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
+            "PRIVATE_KEY",
+            uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
         );
         address deployer = vm.addr(deployerPrivateKey);
 
@@ -61,7 +62,7 @@ contract DeployAll is Script {
         console2.log("IdentityRegistry deployed at:", address(identityRegistry));
 
         // 2. Deploy RWA Fund NAV Oracle (Chainlink AggregatorV3 compatible)
-        oracle = new nhNAVOracle(deployer, deployer, INITIAL_BOND_PRICE, 86_400, 50);
+        oracle = new nhNAVOracle(deployer, deployer, INITIAL_BOND_PRICE, 4 days, 50);
         console2.log("nhNAVOracle deployed at:", address(oracle));
 
         // 3. Deploy nhEUR (Tokenised Commercial Bank Deposit - JPM Coin Model)
@@ -72,7 +73,13 @@ contract DeployAll is Script {
         console2.log("nhBOND NAV (Collateral Leg) deployed at:", address(bondToken));
 
         // 5. Deploy RepoDvP Settlement & Escrow Engine
-        repoDvP = new RepoDvP(deployer, address(complianceRegistry), address(oracle));
+        repoDvP = new RepoDvP(
+            deployer,
+            address(complianceRegistry),
+            address(oracle),
+            address(bondToken),
+            address(cashToken)
+        );
         console2.log("RepoDvP (Settlement Engine) deployed at:", address(repoDvP));
 
         // 6. Configure Initial Compliance & ONCHAINID Registrations

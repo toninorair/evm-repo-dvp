@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: MIT
+// ERC-3643 Token is pinned to solc 0.8.17.
+// solhint-disable-next-line compiler-version
 pragma solidity 0.8.17;
 
 import "ERC-3643/token/Token.sol";

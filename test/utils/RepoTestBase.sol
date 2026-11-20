@@ -1,30 +1,29 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {Test} from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
-import {ComplianceRegistry} from "../../src/ComplianceRegistry.sol";
-import {MockBondPriceOracle} from "../mock/MockBondPriceOracle.sol";
-import {nhEUR} from "../../src/nhEUR.sol";
-import {RepoDvP} from "../../src/RepoDvP.sol";
-import {IRepoTypes} from "../../src/interfaces/IRepoTypes.sol";
+import { ComplianceRegistry } from "../../src/ComplianceRegistry.sol";
+import { MockBondPriceOracle } from "../mock/MockBondPriceOracle.sol";
+import { nhEUR } from "../../src/nhEUR.sol";
+import { RepoDvP } from "../../src/RepoDvP.sol";
 
-import {IERC3643} from "../interfaces/IERC3643.sol";
-import {IERC3643ClaimTopicsRegistry} from "../interfaces/IERC3643ClaimTopicsRegistry.sol";
-import {IERC3643TrustedIssuersRegistry} from "../interfaces/IERC3643TrustedIssuersRegistry.sol";
-import {IERC3643IdentityRegistryStorage} from "../interfaces/IERC3643IdentityRegistryStorage.sol";
-import {IERC3643IdentityRegistry} from "../interfaces/IERC3643IdentityRegistry.sol";
-import {IERC3643Compliance} from "../interfaces/IERC3643Compliance.sol";
-import {IIdentity} from "../interfaces/IIdentity.sol";
-import {InhBOND} from "../../src/interfaces/InhBOND.sol";
-import {ITestBond} from "../interfaces/ITestBond.sol";
-import {ITREXDeployer} from "../../script/helper/ITREXDeployer.sol";
-import {MockIdentity} from "../mock/MockIdentity.sol";
+import { IERC3643 } from "../interfaces/IERC3643.sol";
+import { IERC3643ClaimTopicsRegistry } from "../interfaces/IERC3643ClaimTopicsRegistry.sol";
+import { IERC3643TrustedIssuersRegistry } from "../interfaces/IERC3643TrustedIssuersRegistry.sol";
+import { IERC3643IdentityRegistryStorage } from "../interfaces/IERC3643IdentityRegistryStorage.sol";
+import { IERC3643IdentityRegistry } from "../interfaces/IERC3643IdentityRegistry.sol";
+import { IERC3643Compliance } from "../interfaces/IERC3643Compliance.sol";
+import { IIdentity } from "../interfaces/IIdentity.sol";
+import { InhBOND } from "../../src/interfaces/InhBOND.sol";
+import { ITestBond } from "../interfaces/ITestBond.sol";
+import { ITREXDeployer } from "../../script/helper/ITREXDeployer.sol";
+import { MockIdentity } from "../mock/MockIdentity.sol";
 
 /// @title  RepoTestBase
 /// @notice Base test fixture deploying the Nordhaven institutional repo ecosystem with test accounts.
 /// @author Ethereum Institutional / Nordhaven Bank
-abstract contract RepoTestBase is Test, IRepoTypes {
+abstract contract RepoTestBase is Test {
     /* ============ Test Accounts ============ */
 
     address internal admin = makeAddr("admin");
@@ -94,7 +93,13 @@ abstract contract RepoTestBase is Test, IRepoTypes {
         cashToken = new nhEUR(admin, treasury, compliance, address(complianceRegistry));
 
         // 5. Deploy RepoDvP Engine
-        repoDvP = new RepoDvP(admin, address(complianceRegistry), address(oracle));
+        repoDvP = new RepoDvP(
+            admin,
+            address(complianceRegistry),
+            address(oracle),
+            address(bondToken),
+            address(cashToken)
+        );
 
         vm.stopPrank();
 
@@ -123,5 +128,18 @@ abstract contract RepoTestBase is Test, IRepoTypes {
         // Bank B holds liquidity cash deposits
         cashToken.mint(bankB, INITIAL_CASH_BALANCE, "TARGET2-CREDIT-001");
         vm.stopPrank();
+    }
+
+    /// @dev Reads a repo's state from the public `states` mapping getter.
+    function _getState(uint256 repoId) internal view returns (RepoDvP.RepoState memory s) {
+        (s.status, s.startTime, s.maturity, s.collateralAmount, s.cureDeadline) = repoDvP.states(repoId);
+    }
+
+    /// @dev Reads a repo's terms from the public `orders` mapping getter.
+    function _getOrder(uint256 repoId) internal view returns (RepoDvP.RepoOrder memory o) {
+        // A static struct ABI-encodes like the getter's flat tuple, so decode it directly (avoids stack-too-deep).
+        (bool ok, bytes memory data) = address(repoDvP).staticcall(abi.encodeCall(repoDvP.orders, (repoId)));
+        require(ok, "orders() failed");
+        o = abi.decode(data, (RepoDvP.RepoOrder));
     }
 }

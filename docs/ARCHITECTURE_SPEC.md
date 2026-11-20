@@ -387,24 +387,12 @@ interface IRepoDvP is IRepoTypes {
 
     function acceptProposal(uint256 repoId) external;
 
-    function acceptProposalWithPermit(
-        uint256 repoId,
-        uint256 permitDeadline,
-        uint8 v, bytes32 r, bytes32 s
-    ) external;
-
     function executeRepoOrder(
         RepoOrder calldata order,
         bytes calldata proposerSignature
     ) external returns (uint256 repoId);
 
     function settleRepo(uint256 repoId) external;
-
-    function settleRepoWithPermit(
-        uint256 repoId,
-        uint256 permitDeadline,
-        uint8 v, bytes32 r, bytes32 s
-    ) external;
 
     function triggerMarginCall(uint256 repoId) external;
     function topUpCollateral(uint256 repoId, uint256 topUpAmount) external;

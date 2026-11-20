@@ -3,7 +3,6 @@ pragma solidity 0.8.34;
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
@@ -147,26 +146,12 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, EIP712, AccessControl {
         _acceptProposal(repoId);
     }
 
-    /// @inheritdoc IRepoDvP
-    function acceptProposalWithPermit(uint256 repoId, uint256 permitDeadline, uint8 v, bytes32 r, bytes32 s)
-        external
-        nonReentrant
-    {
-        RepoTerms storage terms = _terms[repoId];
-        RepoState storage state = _states[repoId];
-
-        if (state.status != RepoStatus.Proposed) {
-            revert InvalidState(RepoStatus.Proposed, state.status);
-        }
-
-        address payer = (terms.lender == address(0) || terms.lender == msg.sender) ? msg.sender : terms.borrower;
-        address token = (payer == terms.lender) ? terms.cashToken : terms.collateralToken;
-        uint256 amount = (payer == terms.lender) ? terms.cashAmount : terms.collateralAmount;
-
-        try IERC20Permit(token).permit(payer, address(this), amount, permitDeadline, v, r, s) {} catch {}
-
-        _acceptProposal(repoId);
-    }
+    // --- Note on Gasless Approvals (EIP-2612 / Permit) ---
+    // Suggestion for future extension:
+    // EIP-2612 permit helpers (e.g. acceptProposalWithPermit / settleRepoWithPermit) can be introduced
+    // via a peripheral router or multicall forwarder rather than in this core settlement engine.
+    // Keeping this core contract strictly based on standard ERC-20 allowances simplifies the execution
+    // flow, minimizes contract bytecode size, and eliminates try/catch branching overhead.
 
     /// @inheritdoc IRepoDvP
     function executeRepoOrder(RepoOrder calldata order, bytes calldata proposerSignature)
@@ -219,21 +204,6 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, EIP712, AccessControl {
 
     /// @inheritdoc IRepoDvP
     function settleRepo(uint256 repoId) external nonReentrant {
-        _settleRepo(repoId);
-    }
-
-    /// @inheritdoc IRepoDvP
-    function settleRepoWithPermit(uint256 repoId, uint256 permitDeadline, uint8 v, bytes32 r, bytes32 s)
-        external
-        nonReentrant
-    {
-        RepoTerms storage terms = _terms[repoId];
-        (,, uint256 totalRepurchasePrice) = calculateRepurchasePrice(repoId);
-
-        try IERC20Permit(terms.cashToken)
-            .permit(terms.borrower, address(this), totalRepurchasePrice, permitDeadline, v, r, s) {}
-            catch {}
-
         _settleRepo(repoId);
     }
 

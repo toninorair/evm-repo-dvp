@@ -94,9 +94,6 @@ interface IRepoDvP is IRepoTypes {
     /// @notice Accepts an on-chain proposal and executes Atomic DvP (Opening Leg).
     function acceptProposal(uint256 repoId) external;
 
-    /// @notice Accepts an on-chain proposal with EIP-2612 permit for atomic allowance.
-    function acceptProposalWithPermit(uint256 repoId, uint256 permitDeadline, uint8 v, bytes32 r, bytes32 s) external;
-
     /// @notice Executes an off-chain signed EIP-712 order atomically (Zero-Tx Negotiation).
     function executeRepoOrder(RepoOrder calldata order, bytes calldata proposerSignature)
         external
@@ -104,9 +101,6 @@ interface IRepoDvP is IRepoTypes {
 
     /// @notice Executes the Closing Leg (RvP): Repays Principal + Interest, returns collateral.
     function settleRepo(uint256 repoId) external;
-
-    /// @notice Executes the Closing Leg using EIP-2612 permit for repayment cash.
-    function settleRepoWithPermit(uint256 repoId, uint256 permitDeadline, uint8 v, bytes32 r, bytes32 s) external;
 
     /// @notice Evaluates oracle price and triggers margin call if under-collateralized.
     function triggerMarginCall(uint256 repoId) external;

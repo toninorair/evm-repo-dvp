@@ -58,6 +58,7 @@ This repository delivers a testnet-ready, production-grade Proof of Concept (POC
 evm-dvp-repo/
 ├── docs/
 │   ├── ARCHITECTURE_SPEC.md              # Complete technical architecture specification
+│   ├── ARCHITECTURAL_NOTES.md            # Notes on simplified workflows & peripheral extensions
 │   ├── CONCEPT_EXPLAINER.md              # Part 1: Trading Desk Concept Explainer (4 Slides)
 │   └── STEERING_COMMITTEE_MEMO.md        # Part 2: Steering Committee Decision Memo (Go with Conditions)
 ├── lib/

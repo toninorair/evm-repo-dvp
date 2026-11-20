@@ -454,3 +454,9 @@ This specification fulfills all institutional criteria specified in the Ethereum
 - **Production Cash Blueprint:** Directly adopts **J.P. Morgan's JPM Coin (`JPMD`)** standard for commercial bank deposit tokens.
 - **Institutional Market Data:** Employs a true **RWA Fund NAV Oracle** modeled after BlackRock BUIDL and Ondo Finance OUSG.
 - **Sepolia-Ready:** Ready for compilation, testing, and deployment to the Sepolia testnet.
+
+---
+
+## 10. Architectural Notes & Future Extensions
+
+For full implementation references and rationale on simplified settlement workflows, gasless EIP-2612 permits, and off-chain EIP-712 trade matching, see [ARCHITECTURAL_NOTES.md](file:///Users/toni/EI/repo-case/evm-dvp-repo/docs/ARCHITECTURAL_NOTES.md).

@@ -47,8 +47,8 @@ This architecture specifies a **24/7, atomic Delivery-versus-Payment (DvP) repur
        Identity & Compliance Checks  │               │ Mark-to-Market│ Atomic Cash & Collateral DvP
                                      ▼               ▼               ▼
                        ┌───────────────────┐   ┌───────────┐   ┌────────────────────────────┐
-                       │ IdentityRegistry  │   │ RWAFund   │   │ nhBOND NAV (Pure ERC-3643) │
-                       │ (ONCHAINID / KYC) │   │ NAVOracle │   │ nhEUR (JPM Coin Model)     │
+                       │ IdentityRegistry  │   │ nhNAV     │   │ nhBOND NAV (Pure ERC-3643) │
+                       │ (ONCHAINID / KYC) │   │ Oracle    │   │ nhEUR (JPM Coin Model)     │
                        └───────────────────┘   └───────────┘   └────────────────────────────┘
 ```
 

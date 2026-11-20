@@ -1,0 +1,17 @@
+{
+  "solidity.packageDefaultDependenciesContractsDirectory": [
+    "src",
+    "contracts",
+    ""
+  ],
+  "solidity.packageDefaultDependenciesDirectory": "lib",
+  "solidity.remappings": [
+    "@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts/",
+    "@openzeppelin/contracts-upgradeable/=lib/ERC-3643/node_modules/@openzeppelin/contracts-upgradeable/",
+    "@onchain-id/=lib/ERC-3643/node_modules/@onchain-id/",
+    "forge-std/=lib/forge-std/src/",
+    "ERC-3643/=lib/ERC-3643/contracts/"
+  ],
+  "solidity.compileUsingRemoteVersion": "v0.8.34+commit.80d5c536",
+  "solidity.formatter": "forge"
+}

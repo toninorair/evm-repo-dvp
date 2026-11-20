@@ -2,13 +2,15 @@
 evm_version = "cancun"
 fs_permissions = [
     { access = "read-write", path = "./deployments" },
+    { access = "read", path = "./out" },
 ]
 gas_reports = ["*"]
 gas_reports_ignore = []
 ignored_error_codes = []
 optimizer = true
 optimizer_runs = 2933
-solc_version = "0.8.34"
+auto_detect_solc = true
+# solc_version = "0.8.34"
 verbosity = 3
 
 [lint]

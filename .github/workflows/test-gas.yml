@@ -17,6 +17,17 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: lib/ERC-3643/package-lock.json
+
+      - name: Install ERC-3643 dependencies
+        working-directory: lib/ERC-3643
+        run: npm install --ignore-scripts --no-audit --no-fund
+
       - name: Install Foundry
         uses: foundry-rs/foundry-toolchain@v1
 

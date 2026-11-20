@@ -22,6 +22,8 @@ interface IComplianceRegistry {
 
     /// @notice Thrown when an input address is zero.
     error ZeroAddress();
+    error ZeroAdmin();
+    error ZeroCompliance();
 
     /// @notice Thrown when array lengths mismatch in batch operations.
     error ArrayLengthMismatch();

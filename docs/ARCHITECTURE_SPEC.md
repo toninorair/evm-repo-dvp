@@ -32,10 +32,10 @@ This architecture specifies a **24/7, atomic Delivery-versus-Payment (DvP) repur
     │     [ Bank A Trading Desk ]                                         [ Bank B Trading Desk ]     │
     │     (Cash Borrower / Pledgor)                                       (Cash Lender / Buyer)       │
     │                │                                                               │                │
-    │                │  1. Negotiate RFQ off-chain & sign EIP-712 Order + Permit     │                │
+    │                │  1. Propose repo trade on-chain via proposeRepo()             │                │
     │                └───────────────────────────────┬───────────────────────────────┘                │
     │                                                │                                                │
-    │                                                │ 2. Submits executeRepoOrder()                  │
+    │                                                │ 2. Submits acceptRepo()                        │
     │                                                ▼                                                │
     │                              ┌───────────────────────────────────┐                              │
     │                              │            RepoDvP.sol            │                              │
@@ -111,11 +111,10 @@ This architecture specifies a **24/7, atomic Delivery-versus-Payment (DvP) repur
 
 ```mermaid
 stateDiagram-v2
-    [*] --> Proposed: proposeRepo() [Bilateral On-Chain]
-    [*] --> Active: executeRepoOrder() [EIP-712 Zero-Tx Atomic DvP]
+    [*] --> Proposed: proposeRepo() [Bilateral or Open RFQ]
     
     Proposed --> Cancelled: cancelProposal() [Proposer only]
-    Proposed --> Active: acceptProposal() [Designated Counterparty]
+    Proposed --> Active: acceptRepo() [Designated Counterparty / Open Taker]
     
     state Active {
         [*] --> Healthy
@@ -385,12 +384,7 @@ interface IRepoDvP is IRepoTypes {
         bool isBorrowerProposer
     ) external returns (uint256 repoId);
 
-    function acceptProposal(uint256 repoId) external;
-
-    function executeRepoOrder(
-        RepoOrder calldata order,
-        bytes calldata proposerSignature
-    ) external returns (uint256 repoId);
+    function acceptRepo(uint256 repoId) external;
 
     function settleRepo(uint256 repoId) external;
 
@@ -398,7 +392,6 @@ interface IRepoDvP is IRepoTypes {
     function topUpCollateral(uint256 repoId, uint256 topUpAmount) external;
     function claimDefault(uint256 repoId) external;
     function cancelProposal(uint256 repoId) external;
-    function invalidateNonce(uint256 nonce) external;
 
     // ==========================================
     //           VIEW & PRICING METHODS

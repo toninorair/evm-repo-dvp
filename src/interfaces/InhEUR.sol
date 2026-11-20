@@ -40,6 +40,12 @@ interface InhEUR is IERC20 {
     /// @notice Thrown when an input address is zero.
     error ZeroAddress();
 
+    /// @notice Thrown when a required constructor/config address is zero.
+    error ZeroAdmin();
+    error ZeroTreasury();
+    error ZeroCompliance();
+    error ZeroComplianceRegistry();
+
     /// @notice Thrown when a token amount is zero.
     error ZeroAmount();
 

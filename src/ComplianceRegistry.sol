@@ -24,7 +24,8 @@ contract ComplianceRegistry is IComplianceRegistry, AccessControl {
     /// @param  admin      Address granted DEFAULT_ADMIN_ROLE and COMPLIANCE_ROLE.
     /// @param  compliance Address granted COMPLIANCE_ROLE.
     constructor(address admin, address compliance) {
-        if (admin == address(0) || compliance == address(0)) revert ZeroAddress();
+        if (admin == address(0)) revert ZeroAdmin();
+        if (compliance == address(0)) revert ZeroCompliance();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(COMPLIANCE_ROLE, compliance);

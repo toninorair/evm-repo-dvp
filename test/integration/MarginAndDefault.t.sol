@@ -39,7 +39,7 @@ contract MarginAndDefaultTest is RepoTestBase {
         cashToken.approve(address(repoDvP), type(uint256).max);
 
         vm.prank(bankB);
-        repoDvP.acceptProposal(activeRepoId);
+        repoDvP.acceptRepo(activeRepoId);
     }
 
     function test_MarginCall_Trigger_And_TopUp_Cure() public {

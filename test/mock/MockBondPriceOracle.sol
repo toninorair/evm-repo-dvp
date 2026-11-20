@@ -2,13 +2,13 @@
 pragma solidity 0.8.34;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IBondPriceOracle} from "../../src/interfaces/IBondPriceOracle.sol";
+import {ICollateralPriceOracle} from "../../src/interfaces/ICollateralPriceOracle.sol";
 
 /// @title  MockBondPriceOracle
 /// @notice Mock Chainlink AggregatorV3 price feed reporting EUR sovereign bond prices.
 /// @dev    Used for Sepolia testnet demonstration and Foundry unit/fuzz tests.
 /// @author Ethereum Institutional / Nordhaven Bank
-contract MockBondPriceOracle is IBondPriceOracle, AccessControl {
+contract MockBondPriceOracle is ICollateralPriceOracle, AccessControl {
     /* ============ Constants ============ */
 
     bytes32 public constant ORACLE_FEEDER_ROLE = keccak256("ORACLE_FEEDER_ROLE");
@@ -57,22 +57,22 @@ contract MockBondPriceOracle is IBondPriceOracle, AccessControl {
 
     /* ============ View Functions ============ */
 
-    /// @inheritdoc IBondPriceOracle
+    /// @inheritdoc ICollateralPriceOracle
     function decimals() external pure returns (uint8) {
         return DECIMALS;
     }
 
-    /// @inheritdoc IBondPriceOracle
+    /// @inheritdoc ICollateralPriceOracle
     function description() external pure returns (string memory) {
         return DESCRIPTION;
     }
 
-    /// @inheritdoc IBondPriceOracle
+    /// @inheritdoc ICollateralPriceOracle
     function version() external pure returns (uint256) {
         return VERSION;
     }
 
-    /// @inheritdoc IBondPriceOracle
+    /// @inheritdoc ICollateralPriceOracle
     function latestRoundData()
         external
         view

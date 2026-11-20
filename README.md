@@ -71,7 +71,7 @@ evm-dvp-repo/
 │   ├── RepoDvP.sol                       # Core DvP/RvP settlement and margin engine
 │   ├── nhNAVOracle.sol                   # Production RWA MMF NAV Oracle (BUIDL / OUSG model)
 │   └── interfaces/
-│       ├── IBondPriceOracle.sol
+│       ├── ICollateralPriceOracle.sol
 │       ├── IComplianceRegistry.sol
 │       ├── InhNAVOracle.sol
 │       ├── IRepoDvP.sol
@@ -222,7 +222,7 @@ forge verify-contract <NH_BOND_ADDRESS> src/nhBOND.sol:nhBOND \
 ### Scenario A: The Happy Path (Atomic DvP & RvP)
 1. **Trade Agreement:** Bank A (Borrower) pledges 105,000 `nhBOND` (€10.5M par) to borrow €10,000,000 `nhEUR` at 3.50% repo rate for 7 days (haircut: 2%).
 2. **Opening Leg (DvP):** 
-   - Call `repoDvP.acceptProposal(repoId)`.
+   - Call `repoDvP.acceptRepo(repoId)`.
    - Collateral transfers atomically into escrow; cash transfers to borrower.
    - Bank back office captures `RepoOpened` event.
 3. **Closing Leg (RvP):**

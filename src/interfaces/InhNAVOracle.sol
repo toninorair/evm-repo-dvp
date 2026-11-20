@@ -37,7 +37,8 @@ interface InhNAVOracle is AggregatorV3Interface {
     error StalePrice(uint256 lastUpdatedAt, uint256 currentTimestamp);
     error PriceDeviationExceeded(int256 previousPrice, int256 submittedPrice, uint256 deviationBps);
     error InvalidNAV();
-    error ZeroAddress();
+    error ZeroAdmin();
+    error ZeroCalculationAgent();
     error RoundNotComplete();
 
     /* ============ Interactive Functions ============ */

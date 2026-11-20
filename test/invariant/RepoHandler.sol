@@ -58,7 +58,7 @@ contract RepoHandler is Test, IRepoTypes {
 
         vm.startPrank(bankB);
         cashToken.approve(address(repoDvP), cashAmount);
-        repoDvP.acceptProposal(repoId);
+        repoDvP.acceptRepo(repoId);
         vm.stopPrank();
     }
 

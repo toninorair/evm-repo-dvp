@@ -55,24 +55,22 @@ interface IRepoDvP is IRepoTypes {
     /// @notice Emitted when an unaccepted proposal is cancelled.
     event RepoCancelled(uint256 indexed repoId, address indexed proposer);
 
-    /// @notice Emitted when an EIP-712 nonce is cancelled/invalidated off-chain.
-    event NonceInvalidated(address indexed account, uint256 nonce);
-
     /* ============ Custom Errors ============ */
 
-    error ZeroAddress();
+    error ZeroAdmin();
+    error ZeroComplianceRegistry();
+    error ZeroPriceOracle();
+    error ZeroCollateralToken();
+    error ZeroCashToken();
     error ZeroAmount();
     error Unauthorized();
     error InvalidState(RepoStatus expected, RepoStatus actual);
-    error DeadlineExpired();
     error NotKYCVerified(address account);
     error CounterpartyMismatch(address expected, address actual);
     error InsufficientCollateralValue(uint256 providedValue, uint256 requiredValue);
     error MaturityNotReached(uint256 maturity, uint256 currentTimestamp);
     error CurePeriodActive(uint256 cureDeadline, uint256 currentTimestamp);
     error MarginSufficient();
-    error SignatureInvalid();
-    error NonceAlreadyUsed();
     error HaircutInvalid();
     error TenorInvalid();
 
@@ -92,12 +90,7 @@ interface IRepoDvP is IRepoTypes {
     ) external returns (uint256 repoId);
 
     /// @notice Accepts an on-chain proposal and executes Atomic DvP (Opening Leg).
-    function acceptProposal(uint256 repoId) external;
-
-    /// @notice Executes an off-chain signed EIP-712 order atomically (Zero-Tx Negotiation).
-    function executeRepoOrder(RepoOrder calldata order, bytes calldata proposerSignature)
-        external
-        returns (uint256 repoId);
+    function acceptRepo(uint256 repoId) external;
 
     /// @notice Executes the Closing Leg (RvP): Repays Principal + Interest, returns collateral.
     function settleRepo(uint256 repoId) external;
@@ -114,9 +107,6 @@ interface IRepoDvP is IRepoTypes {
     /// @notice Cancels an unaccepted proposal.
     function cancelProposal(uint256 repoId) external;
 
-    /// @notice Invalidates an EIP-712 nonce to cancel an off-chain order before execution.
-    function invalidateNonce(uint256 nonce) external;
-
     /* ============ View Functions ============ */
 
     function getRepo(uint256 repoId) external view returns (RepoTerms memory terms, RepoState memory state);
@@ -130,5 +120,4 @@ interface IRepoDvP is IRepoTypes {
         view
         returns (bool isHealthy, uint256 currentRatioBps, uint256 deficitEUR);
     function repoCount() external view returns (uint256);
-    function isNonceUsed(address account, uint256 nonce) external view returns (bool);
 }

@@ -5,7 +5,7 @@ import {RepoTestBase} from "../utils/RepoTestBase.sol";
 import {InhEUR} from "../../src/interfaces/InhEUR.sol";
 import {IERC3643} from "../interfaces/IERC3643.sol";
 import {IComplianceRegistry} from "../../src/interfaces/IComplianceRegistry.sol";
-import {IBondPriceOracle} from "../../src/interfaces/IBondPriceOracle.sol";
+import {ICollateralPriceOracle} from "../../src/interfaces/ICollateralPriceOracle.sol";
 import {nhNAVOracle} from "../../src/nhNAVOracle.sol";
 import {InhNAVOracle} from "../../src/interfaces/InhNAVOracle.sol";
 import {MockIdentity} from "../mock/MockIdentity.sol";
@@ -160,7 +160,7 @@ contract ComplianceAndTokensTest is RepoTestBase {
         assertEq(updatedPrice, newPrice);
 
         vm.prank(admin);
-        vm.expectRevert(IBondPriceOracle.InvalidPrice.selector);
+        vm.expectRevert(ICollateralPriceOracle.InvalidPrice.selector);
         oracle.updatePrice(-1);
     }
 

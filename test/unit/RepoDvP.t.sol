@@ -72,7 +72,7 @@ contract RepoDvPTest is RepoTestBase {
 
         // 3. Bank B accepts proposal -> Atomic DvP executes
         vm.prank(bankB);
-        repoDvP.acceptProposal(repoId);
+        repoDvP.acceptRepo(repoId);
 
         // 4. Verify balances post-DvP
         // Borrower (Bank A) lost bonds into escrow, gained cash
@@ -113,7 +113,7 @@ contract RepoDvPTest is RepoTestBase {
         vm.prank(bankB);
         cashToken.approve(address(repoDvP), CASH_PRINCIPAL);
         vm.prank(bankB);
-        repoDvP.acceptProposal(repoId);
+        repoDvP.acceptRepo(repoId);
 
         // Fast-forward to maturity (7 days)
         vm.warp(block.timestamp + TENOR_SECONDS);
@@ -149,73 +149,29 @@ contract RepoDvPTest is RepoTestBase {
         assertEq(uint8(state.status), uint8(RepoStatus.Settled));
     }
 
-    function test_EIP712_ExecuteRepoOrder_ZeroTxNegotiation() public {
-        // Bank A signs an off-chain order pledging collateral for cash
-        RepoOrder memory order = RepoOrder({
-            proposer: bankA,
-            counterparty: bankB,
-            isBorrower: true,
-            collateralToken: address(bondToken),
-            cashToken: address(cashToken),
-            collateralAmount: COLLATERAL_AMOUNT,
-            cashAmount: CASH_PRINCIPAL,
-            repoRateBps: REPO_RATE_BPS,
-            tenorSeconds: TENOR_SECONDS,
-            haircutBps: HAIRCUT_BPS,
-            nonce: 1,
-            deadline: block.timestamp + 1 hours
-        });
-
-        bytes memory signature = signRepoOrder(order, bankAPk);
-
-        // Approvals (or custody approvals)
-        vm.prank(bankA);
-        bondToken.approve(address(repoDvP), COLLATERAL_AMOUNT);
-        vm.prank(bankB);
-        cashToken.approve(address(repoDvP), CASH_PRINCIPAL);
-
-        // Bank B executes the order in a single transaction on-chain
-        vm.prank(bankB);
-        uint256 repoId = repoDvP.executeRepoOrder(order, signature);
-
-        assertEq(repoId, 1);
-        (, RepoState memory state) = repoDvP.getRepo(repoId);
-        assertEq(uint8(state.status), uint8(RepoStatus.Active));
-        assertEq(bondToken.balanceOf(address(repoDvP)), COLLATERAL_AMOUNT);
-
-        // Replay of same nonce reverts
-        vm.prank(bankB);
-        vm.expectRevert(IRepoDvP.NonceAlreadyUsed.selector);
-        repoDvP.executeRepoOrder(order, signature);
-    }
-
     function test_OpenRFQ_CounterpartyAddressZero() public {
-        // Bank B signs an open lending quote (counterparty == address(0))
-        RepoOrder memory order = RepoOrder({
-            proposer: bankB,
-            counterparty: address(0), // Open to ANY allowlisted bank
-            isBorrower: false, // Bank B is lender
-            collateralToken: address(bondToken),
-            cashToken: address(cashToken),
-            collateralAmount: COLLATERAL_AMOUNT,
-            cashAmount: CASH_PRINCIPAL,
-            repoRateBps: REPO_RATE_BPS,
-            tenorSeconds: TENOR_SECONDS,
-            haircutBps: HAIRCUT_BPS,
-            nonce: 100,
-            deadline: block.timestamp + 1 hours
-        });
-
-        bytes memory signature = signRepoOrder(order, bankBPk);
+        // Bank B proposes an open lending quote (counterparty == address(0))
+        vm.prank(bankB);
+        uint256 repoId = repoDvP.proposeRepo(
+            address(0), // Open to ANY allowlisted bank
+            address(bondToken),
+            address(cashToken),
+            COLLATERAL_AMOUNT,
+            CASH_PRINCIPAL,
+            REPO_RATE_BPS,
+            TENOR_SECONDS,
+            HAIRCUT_BPS,
+            false // Bank B is lender
+        );
 
         vm.prank(bankA);
         bondToken.approve(address(repoDvP), COLLATERAL_AMOUNT);
         vm.prank(bankB);
         cashToken.approve(address(repoDvP), CASH_PRINCIPAL);
 
-        // Bank A hits the open quote
+        // Bank A (borrower) accepts the open quote
         vm.prank(bankA);
-        uint256 repoId = repoDvP.executeRepoOrder(order, signature);
+        repoDvP.acceptRepo(repoId);
 
         (RepoTerms memory terms, RepoState memory state) = repoDvP.getRepo(repoId);
         assertEq(terms.borrower, bankA);

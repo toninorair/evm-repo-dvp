@@ -124,45 +124,4 @@ abstract contract RepoTestBase is Test, IRepoTypes {
         cashToken.mint(bankB, INITIAL_CASH_BALANCE, "TARGET2-CREDIT-001");
         vm.stopPrank();
     }
-
-    /* ============ Helpers ============ */
-
-    /// @notice Helper to sign an EIP-712 RepoOrder struct.
-    function signRepoOrder(RepoOrder memory order, uint256 signerPk) internal view returns (bytes memory signature) {
-        bytes32 structHash = keccak256(
-            bytes.concat(
-                abi.encode(
-                    repoDvP.REPO_ORDER_TYPEHASH(),
-                    order.proposer,
-                    order.counterparty,
-                    order.isBorrower,
-                    order.collateralToken,
-                    order.cashToken
-                ),
-                abi.encode(
-                    order.collateralAmount,
-                    order.cashAmount,
-                    order.repoRateBps,
-                    order.tenorSeconds,
-                    order.haircutBps,
-                    order.nonce,
-                    order.deadline
-                )
-            )
-        );
-
-        bytes32 domainSeparator = keccak256(
-            abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
-                keccak256(bytes("Nordhaven RepoDvP")),
-                keccak256(bytes("1")),
-                block.chainid,
-                address(repoDvP)
-            )
-        );
-        bytes32 digest = keccak256(abi.encodePacked("\x19\x01", domainSeparator, structHash));
-
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPk, digest);
-        signature = abi.encodePacked(r, s, v);
-    }
 }

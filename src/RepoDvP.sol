@@ -4,19 +4,17 @@ pragma solidity 0.8.34;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import {EIP712} from "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
-import {ECDSA} from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
 
 import {IComplianceRegistry} from "./interfaces/IComplianceRegistry.sol";
-import {IBondPriceOracle} from "./interfaces/IBondPriceOracle.sol";
+import {ICollateralPriceOracle} from "./interfaces/ICollateralPriceOracle.sol";
 import {IRepoDvP} from "./interfaces/IRepoDvP.sol";
 
 /// @title  RepoDvP
 /// @notice Delivery-versus-Payment (DvP) smart contract engine for tokenised repurchase agreements.
 /// @dev    Provides atomic gross settlement, Actual/360 interest calculations, and programmable margin management.
 /// @author Ethereum Institutional / Nordhaven Bank
-contract RepoDvP is IRepoDvP, ReentrancyGuard, EIP712, AccessControl {
+contract RepoDvP is IRepoDvP, ReentrancyGuard, AccessControl {
     using SafeERC20 for IERC20;
 
     /* ============ Constants ============ */
@@ -39,20 +37,15 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, EIP712, AccessControl {
     /// @notice Role authorized to configure risk and oracle parameters.
     bytes32 public constant RISK_MANAGER_ROLE = keccak256("RISK_MANAGER_ROLE");
 
-    /// @notice EIP-712 typehash for off-chain RepoOrder structs.
-    bytes32 public constant REPO_ORDER_TYPEHASH = keccak256(
-        "RepoOrder(address proposer,address counterparty,bool isBorrower,address collateralToken,address cashToken,uint256 collateralAmount,uint256 cashAmount,uint32 repoRateBps,uint32 tenorSeconds,uint32 haircutBps,uint256 nonce,uint256 deadline)"
-    );
-
     /* ============ Immutables ============ */
 
     /// @notice The institutional compliance registry.
-    IComplianceRegistry public immutable complianceRegistry;
+    address public immutable complianceRegistry;
 
     /* ============ Storage ============ */
 
     /// @notice Price oracle reporting sovereign bond EUR prices (Chainlink AggregatorV3).
-    IBondPriceOracle public bondPriceOracle;
+    address public bondPriceOracle;
 
     /// @notice Total number of repo agreements initialized.
     uint256 public repoCount;
@@ -69,25 +62,22 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, EIP712, AccessControl {
     /// @notice Dynamic operational state of each repo agreement.
     mapping(uint256 repoId => RepoState) private _states;
 
-    /// @notice Tracks used/invalidated nonces per account for EIP-712 orders.
-    mapping(address account => mapping(uint256 nonce => bool)) private _usedNonces;
-
     /* ============ Constructor ============ */
 
     /// @notice Constructs the RepoDvP settlement contract.
     /// @param  admin                Address granted DEFAULT_ADMIN_ROLE and RISK_MANAGER_ROLE.
     /// @param  complianceRegistry_ Address of the institutional KYC registry.
-    /// @param  bondPriceOracle_     Address of the bond price oracle.
-    constructor(address admin, address complianceRegistry_, address bondPriceOracle_) EIP712("Nordhaven RepoDvP", "1") {
-        if (admin == address(0) || complianceRegistry_ == address(0) || bondPriceOracle_ == address(0)) {
-            revert ZeroAddress();
-        }
+    /// @param  collateralOracle_    Address of the collateral price oracle.
+    constructor(address admin, address complianceRegistry_, address collateralOracle_) {
+        if (admin == address(0)) revert ZeroAdmin();
+        if (complianceRegistry_ == address(0)) revert ZeroComplianceRegistry();
+        if (collateralOracle_ == address(0)) revert ZeroPriceOracle();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(RISK_MANAGER_ROLE, admin);
 
-        complianceRegistry = IComplianceRegistry(complianceRegistry_);
-        bondPriceOracle = IBondPriceOracle(bondPriceOracle_);
+        complianceRegistry = complianceRegistry_;
+        bondPriceOracle = collateralOracle_;
 
         curePeriodSeconds = 7_200; // 2 hours
         maintenanceMarginBps = 100; // 1.00%
@@ -107,22 +97,25 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, EIP712, AccessControl {
         uint32 haircutBps,
         bool isBorrowerProposer
     ) external nonReentrant returns (uint256 repoId) {
-        if (collateralToken == address(0) || cashToken == address(0)) revert ZeroAddress();
+        if (collateralToken == address(0)) revert ZeroCollateralToken();
+        if (cashToken == address(0)) revert ZeroCashToken();
         if (collateralAmount == 0 || cashAmount == 0) revert ZeroAmount();
         if (haircutBps > MAX_HAIRCUT_BPS) revert HaircutInvalid();
         if (tenorSeconds == 0 || tenorSeconds > MAX_TENOR_SECONDS) revert TenorInvalid();
 
-        if (!complianceRegistry.isVerified(msg.sender)) revert NotKYCVerified(msg.sender);
-        if (counterparty != address(0) && !complianceRegistry.isVerified(counterparty)) {
-            revert NotKYCVerified(counterparty);
+        address borrower = isBorrowerProposer ? msg.sender : counterparty;
+        address lender = isBorrowerProposer ? counterparty : msg.sender;
+
+        if (borrower != address(0) && !IComplianceRegistry(complianceRegistry).isVerified(borrower)) {
+            revert NotKYCVerified(borrower);
+        }
+        if (lender != address(0) && !IComplianceRegistry(complianceRegistry).isVerified(lender)) {
+            revert NotKYCVerified(lender);
         }
 
         unchecked {
             repoId = ++repoCount;
         }
-
-        address borrower = isBorrowerProposer ? msg.sender : counterparty;
-        address lender = isBorrowerProposer ? counterparty : msg.sender;
 
         _terms[repoId] = RepoTerms({
             borrower: borrower,
@@ -142,69 +135,79 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, EIP712, AccessControl {
     }
 
     /// @inheritdoc IRepoDvP
-    function acceptProposal(uint256 repoId) external nonReentrant {
-        _acceptProposal(repoId);
+    function acceptRepo(uint256 repoId) external nonReentrant {
+        RepoTerms storage terms = _terms[repoId];
+        RepoState storage state = _states[repoId];
+
+        if (state.status != RepoStatus.Proposed) revert InvalidState(RepoStatus.Proposed, state.status);
+
+        // Make sure that caller either lender or borrower is still KYC verified and compliant at the time of acceptance.
+        // This prevents a situation where a counterparty is de-verified after proposal but before acceptance.
+        if (!IComplianceRegistry(complianceRegistry).isVerified(msg.sender)) revert NotKYCVerified(msg.sender);
+
+        if (terms.borrower == address(0)) {
+            // Proposer was lender; accepter is borrower
+            terms.borrower = msg.sender;
+        } else if (terms.lender == address(0)) {
+            // Proposer was borrower; accepter is lender
+            terms.lender = msg.sender;
+        } else {
+            // Bilateral proposal with specific counterparty
+            if (msg.sender != terms.borrower && msg.sender != terms.lender) {
+                revert CounterpartyMismatch(terms.lender, msg.sender);
+            }
+        }
+
+        _executeOpeningLeg(repoId, terms.borrower, terms.lender);
     }
 
+    // =========================================================================
+    // NOTE ON REMOVED METHODS & ARCHITECTURAL SIMPLIFICATION:
+    //
     // --- Note on Gasless Approvals (EIP-2612 / Permit) ---
     // Suggestion for future extension:
     // EIP-2612 permit helpers (e.g. acceptProposalWithPermit / settleRepoWithPermit) can be introduced
     // via a peripheral router or multicall forwarder rather than in this core settlement engine.
     // Keeping this core contract strictly based on standard ERC-20 allowances simplifies the execution
     // flow, minimizes contract bytecode size, and eliminates try/catch branching overhead.
-
-    /// @inheritdoc IRepoDvP
-    function executeRepoOrder(RepoOrder calldata order, bytes calldata proposerSignature)
-        external
-        nonReentrant
-        returns (uint256 repoId)
-    {
-        if (block.timestamp > order.deadline) revert DeadlineExpired();
-        if (order.collateralToken == address(0) || order.cashToken == address(0)) revert ZeroAddress();
-        if (order.collateralAmount == 0 || order.cashAmount == 0) revert ZeroAmount();
-        if (order.haircutBps > MAX_HAIRCUT_BPS) revert HaircutInvalid();
-        if (order.tenorSeconds == 0 || order.tenorSeconds > MAX_TENOR_SECONDS) revert TenorInvalid();
-
-        if (_usedNonces[order.proposer][order.nonce]) revert NonceAlreadyUsed();
-        _usedNonces[order.proposer][order.nonce] = true;
-
-        bytes32 structHash = _hashRepoOrder(order);
-        bytes32 hash = _hashTypedDataV4(structHash);
-        address recoveredSigner = ECDSA.recover(hash, proposerSignature);
-        if (recoveredSigner != order.proposer) revert SignatureInvalid();
-
-        if (order.counterparty != address(0) && msg.sender != order.counterparty) {
-            revert CounterpartyMismatch(order.counterparty, msg.sender);
-        }
-
-        if (!complianceRegistry.isVerified(order.proposer)) revert NotKYCVerified(order.proposer);
-        if (!complianceRegistry.isVerified(msg.sender)) revert NotKYCVerified(msg.sender);
-
-        unchecked {
-            repoId = ++repoCount;
-        }
-
-        address borrower = order.isBorrower ? order.proposer : msg.sender;
-        address lender = order.isBorrower ? msg.sender : order.proposer;
-
-        _terms[repoId] = RepoTerms({
-            borrower: borrower,
-            lender: lender,
-            collateralToken: order.collateralToken,
-            cashToken: order.cashToken,
-            collateralAmount: order.collateralAmount,
-            cashAmount: order.cashAmount,
-            repoRateBps: order.repoRateBps,
-            haircutBps: order.haircutBps,
-            tenorSeconds: order.tenorSeconds
-        });
-
-        _executeOpeningLeg(repoId, borrower, lender);
-    }
+    //
+    // --- Note on Off-Chain Order Execution (EIP-712) ---
+    // The off-chain signed order execution method:
+    // `function executeRepoOrder(RepoOrder calldata order, bytes calldata proposerSignature)`
+    // was removed for now in favor of on-chain `proposeRepo` and `acceptRepo`.
+    // Keeping this core contract strictly focused on on-chain proposals and acceptance simplifies the
+    // settlement workflow, eliminates signature verification and nonce management overhead, and ensures
+    // maximum auditability and bytecode efficiency for institutional deployment.
+    // =========================================================================
 
     /// @inheritdoc IRepoDvP
     function settleRepo(uint256 repoId) external nonReentrant {
-        _settleRepo(repoId);
+        RepoTerms storage terms = _terms[repoId];
+        RepoState storage state = _states[repoId];
+
+        if (state.status != RepoStatus.Active && state.status != RepoStatus.MarginCalled) {
+            revert InvalidState(RepoStatus.Active, state.status);
+        }
+
+        if (msg.sender != terms.borrower) revert Unauthorized();
+
+        (uint256 principal, uint256 interest, uint256 totalRepurchasePrice) = calculateRepurchasePrice(repoId);
+
+        state.status = RepoStatus.Settled;
+        state.principalRepaid = principal;
+        state.interestRepaid = interest;
+        state.collateralReturned = terms.collateralAmount;
+
+        uint256 returnCollateral = terms.collateralAmount;
+        terms.collateralAmount = 0;
+
+        // 1. Transfer cash repayment from borrower to lender
+        IERC20(terms.cashToken).safeTransferFrom(terms.borrower, terms.lender, totalRepurchasePrice);
+
+        // 2. Release collateral from escrow back to borrower
+        IERC20(terms.collateralToken).safeTransfer(terms.borrower, returnCollateral);
+
+        emit RepoSettled(repoId, principal, interest, returnCollateral, uint40(block.timestamp));
     }
 
     /// @inheritdoc IRepoDvP
@@ -304,17 +307,10 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, EIP712, AccessControl {
         emit RepoCancelled(repoId, msg.sender);
     }
 
-    /// @inheritdoc IRepoDvP
-    function invalidateNonce(uint256 nonce) external {
-        if (_usedNonces[msg.sender][nonce]) revert NonceAlreadyUsed();
-        _usedNonces[msg.sender][nonce] = true;
-        emit NonceInvalidated(msg.sender, nonce);
-    }
-
     /// @notice Configures the bond price oracle.
     function setBondPriceOracle(address newOracle) external onlyRole(RISK_MANAGER_ROLE) {
-        if (newOracle == address(0)) revert ZeroAddress();
-        bondPriceOracle = IBondPriceOracle(newOracle);
+        if (newOracle == address(0)) revert ZeroPriceOracle();
+        bondPriceOracle = newOracle;
     }
 
     /// @notice Configures the margin call cure period.
@@ -363,8 +359,8 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, EIP712, AccessControl {
     /// @inheritdoc IRepoDvP
     function getCollateralValue(uint256 repoId) public view returns (uint256 collateralValueEUR) {
         RepoTerms storage terms = _terms[repoId];
-        (, int256 price,,,) = bondPriceOracle.latestRoundData();
-        if (price <= 0) revert IBondPriceOracle.InvalidPrice();
+        (, int256 price,,,) = ICollateralPriceOracle(bondPriceOracle).latestRoundData();
+        if (price <= 0) revert ICollateralPriceOracle.InvalidPrice();
 
         // Bond price has 8 decimals; nhBOND has 18 decimals
         collateralValueEUR = (terms.collateralAmount * uint256(price)) / 1e8;
@@ -393,59 +389,7 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, EIP712, AccessControl {
         }
     }
 
-    /// @inheritdoc IRepoDvP
-    function isNonceUsed(address account, uint256 nonce) external view returns (bool) {
-        return _usedNonces[account][nonce];
-    }
-
     /* ============ Internal Functions ============ */
-
-    function _hashRepoOrder(RepoOrder calldata order) internal pure returns (bytes32) {
-        return keccak256(
-            bytes.concat(
-                abi.encode(
-                    REPO_ORDER_TYPEHASH,
-                    order.proposer,
-                    order.counterparty,
-                    order.isBorrower,
-                    order.collateralToken,
-                    order.cashToken
-                ),
-                abi.encode(
-                    order.collateralAmount,
-                    order.cashAmount,
-                    order.repoRateBps,
-                    order.tenorSeconds,
-                    order.haircutBps,
-                    order.nonce,
-                    order.deadline
-                )
-            )
-        );
-    }
-
-    function _acceptProposal(uint256 repoId) internal {
-        RepoTerms storage terms = _terms[repoId];
-        RepoState storage state = _states[repoId];
-
-        if (state.status != RepoStatus.Proposed) {
-            revert InvalidState(RepoStatus.Proposed, state.status);
-        }
-
-        if (!complianceRegistry.isVerified(msg.sender)) revert NotKYCVerified(msg.sender);
-
-        if (terms.borrower == address(0)) {
-            terms.borrower = msg.sender;
-        } else if (terms.lender == address(0)) {
-            terms.lender = msg.sender;
-        } else {
-            if (msg.sender != terms.borrower && msg.sender != terms.lender) {
-                revert CounterpartyMismatch(terms.lender, msg.sender);
-            }
-        }
-
-        _executeOpeningLeg(repoId, terms.borrower, terms.lender);
-    }
 
     function _executeOpeningLeg(uint256 repoId, address borrower, address lender) internal {
         RepoTerms storage terms = _terms[repoId];
@@ -471,34 +415,5 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, EIP712, AccessControl {
         emit RepoOpened(
             repoId, borrower, lender, terms.cashAmount, terms.collateralAmount, state.startTime, state.maturity
         );
-    }
-
-    function _settleRepo(uint256 repoId) internal {
-        RepoTerms storage terms = _terms[repoId];
-        RepoState storage state = _states[repoId];
-
-        if (state.status != RepoStatus.Active && state.status != RepoStatus.MarginCalled) {
-            revert InvalidState(RepoStatus.Active, state.status);
-        }
-
-        if (msg.sender != terms.borrower) revert Unauthorized();
-
-        (uint256 principal, uint256 interest, uint256 totalRepurchasePrice) = calculateRepurchasePrice(repoId);
-
-        state.status = RepoStatus.Settled;
-        state.principalRepaid = principal;
-        state.interestRepaid = interest;
-        state.collateralReturned = terms.collateralAmount;
-
-        uint256 returnCollateral = terms.collateralAmount;
-        terms.collateralAmount = 0;
-
-        // 1. Transfer cash repayment from borrower to lender
-        IERC20(terms.cashToken).safeTransferFrom(terms.borrower, terms.lender, totalRepurchasePrice);
-
-        // 2. Release collateral from escrow back to borrower
-        IERC20(terms.collateralToken).safeTransfer(terms.borrower, returnCollateral);
-
-        emit RepoSettled(repoId, principal, interest, returnCollateral, uint40(block.timestamp));
     }
 }

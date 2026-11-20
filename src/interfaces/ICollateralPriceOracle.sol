@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-/// @title  IBondPriceOracle
+/// @title  ICollateralPriceOracle
 /// @notice Chainlink AggregatorV3-compatible price feed interface for tokenised sovereign bonds.
 /// @dev    Reports European sovereign bond prices denominated in EUR with 8 decimals (e.g. 98_50000000 = €98.50 per 100 par).
 /// @author Ethereum Institutional / Nordhaven Bank
-interface IBondPriceOracle {
+interface ICollateralPriceOracle {
     /* ============ Events ============ */
 
     /// @notice Emitted when the bond price feed is updated.

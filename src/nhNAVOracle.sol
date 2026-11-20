@@ -47,7 +47,8 @@ contract nhNAVOracle is InhNAVOracle, AccessControl {
         uint256 maxStalenessSeconds,
         uint256 maxDeviationBps
     ) {
-        if (admin == address(0) || calculationAgent_ == address(0)) revert ZeroAddress();
+        if (admin == address(0)) revert ZeroAdmin();
+        if (calculationAgent_ == address(0)) revert ZeroCalculationAgent();
         if (initialNAV <= 0) revert InvalidNAV();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
@@ -98,7 +99,7 @@ contract nhNAVOracle is InhNAVOracle, AccessControl {
 
     /// @inheritdoc InhNAVOracle
     function setCalculationAgent(address newAgent) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (newAgent == address(0)) revert ZeroAddress();
+        if (newAgent == address(0)) revert ZeroCalculationAgent();
         address oldAgent = _calculationAgent;
         _revokeRole(CALCULATION_AGENT_ROLE, oldAgent);
         _grantRole(CALCULATION_AGENT_ROLE, newAgent);

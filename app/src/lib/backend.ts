@@ -4,6 +4,7 @@ import {
   createPublicClient,
   createWalletClient,
   custom,
+  fallback,
   http,
   keccak256,
   toHex,
@@ -16,7 +17,7 @@ import {
   type WalletClient,
 } from 'viem'
 import { bondTokenAbi, cashTokenAbi, identityAbi, identityBytecode, identityRegistryAbi, oracleAbi, repoDvpAbi } from './abi'
-import { chain, deployBlock, networkName, repoDvP, rpcUrl } from './config'
+import { chain, deployBlock, isLocal, networkName, repoDvP, rpcUrl, sepoliaFallbackRpcs } from './config'
 import { RepoStatus, interestFor, repurchasePrice, same, statusLabel, type Repo, type RepoHistory } from './repo'
 
 /* ============ Shapes ============ */
@@ -214,8 +215,8 @@ declare global {
 const EVENT_NAMES = new Set<string>(['RepoProposed', 'RepoOpened', 'RepoSettled', 'MarginCalled', 'MarginToppedUp', 'RepoDefaulted', 'RepoCancelled'])
 const MAX_REPOS = 200
 const MAX_CHUNK = 10_000n
-/** eth_getLogs rejections that mean "ask for fewer blocks", across Alchemy, Infura, QuickNode and public RPCs. */
-const RANGE_ERROR = /range|too many|limit|exceed|10,?000|results|block.*size|query returned more/i
+/** Free tier RPCs (e.g. Alchemy Free) limit eth_getLogs to 10 blocks; public RPCs allow 10,000. */
+const RANGE_ERROR = /range|too many|limit|exceed|10,?000|10 block|up to a \d+|results|block.*size|query returned more|free tier|http request failed/i
 /** Settle approvals cover this much future accrual, so the transaction can't fail on a few seconds of interest. */
 const SETTLE_BUFFER_SECONDS = 3_600
 
@@ -240,9 +241,16 @@ class Backend {
   private registry = new Map<string, Map<string, { wallet: Address; identity: Address; block: bigint }>>()
 
   constructor() {
+    const transport = isLocal
+      ? http(rpcUrl)
+      : fallback(
+          [...(rpcUrl ? [rpcUrl] : []), ...sepoliaFallbackRpcs].map((url) =>
+            http(url, { timeout: 10_000, retryCount: 1 }),
+          ),
+        )
     this.client = createPublicClient({
       chain,
-      transport: http(rpcUrl),
+      transport,
       // Batch reads through Multicall3 where the chain has it (Sepolia); a bare anvil node does not.
       batch: chain.contracts?.multicall3 ? { multicall: true } : undefined,
     }) as PublicClient

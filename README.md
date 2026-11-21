@@ -10,6 +10,7 @@ Smart contracts and settlement console for tokenised EUR sovereign bond repurcha
 
 ## Case Study Deliverables
 
+- **Live Sepolia Settlement Console (GitHub Pages):** [**https://toninorair.github.io/evm-repo-dvp/**](https://toninorair.github.io/evm-repo-dvp/)
 - **Part 1 — Concept Explainer (Trading Desk):** [`docs/CONCEPT_EXPLAINER.md`](docs/CONCEPT_EXPLAINER.md)
 - **Part 2 — Considerations & Decision Memo:** [`docs/STEERING_COMMITTEE_MEMO.md`](docs/STEERING_COMMITTEE_MEMO.md)
 - **Part 3 — Architecture & Design Notes:** [`docs/ARCHITECTURE_SPEC.md`](docs/ARCHITECTURE_SPEC.md) · [`docs/ARCHITECTURAL_NOTES.md`](docs/ARCHITECTURAL_NOTES.md) · [`app/README.md`](app/README.md)
@@ -71,23 +72,25 @@ Import the three Anvil test keys printed by `make local-deploy` into MetaMask:
 
 ## 3. Option B — Use Against Deployed Sepolia Contract
 
-### Connect the UI to an existing Sepolia deployment
+### Open the hosted console or run locally against Sepolia
 
-1. Remove any local override and configure `app/.env`:
-   ```bash
-   rm -f app/.env.local
-   cp app/.env.example app/.env
-   ```
-2. Set `VITE_REPO_DVP=<SEPOLIA_REPO_DVP_ADDRESS>` (and optionally `VITE_RPC_URL` and `VITE_DEPLOY_BLOCK`) in `app/.env`.
-3. Start the console:
-   ```bash
-   npm run app:dev
-   ```
-4. **Onboard a wallet:** Connect the deployer wallet on the **Identity** tab (`#/identity`) to one-click register and fund any Sepolia address, or run via CLI:
-   ```bash
-   REPO_DVP=0x... DESK=0x... BONDS=250000 CASH=25000000 \
-   forge script script/deploy/OnboardDesk.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast
-   ```
+- **Hosted on GitHub Pages:** [**https://toninorair.github.io/evm-repo-dvp/**](https://toninorair.github.io/evm-repo-dvp/) (pre-configured for the verified Sepolia deployment).
+- **Or run the console locally:**
+  1. Remove any local override (the console defaults to the verified Sepolia `RepoDvP` at `0x9b7d0BaE4acDE189DAe646FEfbafFd9842E39233`):
+     ```bash
+     rm -f app/.env.local
+     cp app/.env.example app/.env
+     ```
+  2. (Optional) Set a custom `VITE_RPC_URL` in `app/.env`.
+  3. Start the console:
+     ```bash
+     npm run app:dev
+     ```
+  4. **Onboard a wallet:** Connect the deployer wallet on the **Identity** tab (`#/identity`) to one-click register and fund any Sepolia address, or run via CLI:
+     ```bash
+     REPO_DVP=0x9b7d0BaE4acDE189DAe646FEfbafFd9842E39233 DESK=0x... BONDS=250000 CASH=25000000 \
+     forge script script/deploy/OnboardDesk.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast
+     ```
 
 ### Deploy a fresh instance to Sepolia
 

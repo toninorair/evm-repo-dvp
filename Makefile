@@ -36,10 +36,17 @@ coverage:
 	FOUNDRY_PROFILE=$(profile) forge coverage --report lcov && lcov --ignore-errors inconsistent --extract lcov.info -o lcov.info 'src/*' && genhtml lcov.info -o coverage
 
 gas-report:
-	FOUNDRY_PROFILE=$(profile) forge test --gas-report > gasreport.ansi
+	FOUNDRY_PROFILE=$(profile) forge build && FOUNDRY_PROFILE=$(profile) forge test --gas-report > gasreport.ansi
 
 sizes:
 	@./build.sh -p production -s
+
+# Local testing of the settlement console with MetaMask (see app/README.md).
+local-chain:
+	anvil --hardfork osaka
+
+local-deploy:
+	@./script/local/deploy-local.sh
 
 clean:
 	forge clean && rm -rf ./abi && rm -rf ./bytecode && rm -rf ./types

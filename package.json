@@ -19,7 +19,9 @@
     "test-gas": "make -B gas-report",
     "test-fuzz": "make -B fuzz",
     "test-integration": "make -B integration",
-    "test-invariant": "make -B invariant"
+    "test-invariant": "make -B invariant",
+    "app:dev": "npm --prefix app run dev",
+    "app:build": "npm --prefix app run build"
   },
   "devDependencies": {
     "husky": "^9.1.7",

@@ -63,9 +63,6 @@ contract RepoDvP is IRepoDvP {
     /// @notice Combined interest denominator: Actual/360 year in seconds (31,104,000) * BPS_DENOMINATOR.
     uint256 public constant INTEREST_DENOMINATOR = 311_040_000_000;
 
-    /// @notice Oracle price precision (8 decimals, Chainlink AggregatorV3 convention).
-    uint256 public constant ORACLE_PRICE_PRECISION = 1e8;
-
     /// @notice Maximum allowed initial margin over the borrow amount (50.00% / 5,000 bps).
     uint32 public constant MAX_INITIAL_MARGIN_BPS = 5_000;
 
@@ -76,6 +73,9 @@ contract RepoDvP is IRepoDvP {
 
     /// @notice Price oracle reporting sovereign bond EUR prices (Chainlink AggregatorV3).
     address public immutable collateralOracle;
+
+    /// @notice Oracle price precision derived from `collateralOracle.decimals()` at construction (`10 ** decimals()`).
+    uint256 public immutable oraclePricePrecision;
 
     /// @notice The collateral (securities leg) token accepted by this engine, e.g. nhBOND.
     address public immutable collateralToken;
@@ -104,6 +104,7 @@ contract RepoDvP is IRepoDvP {
         if ((collateralOracle = collateralOracle_) == address(0)) revert ZeroPriceOracle();
         if ((collateralToken = collateralToken_) == address(0)) revert ZeroCollateralToken();
         if ((cashToken = cashToken_) == address(0)) revert ZeroCashToken();
+        oraclePricePrecision = 10 ** InhNAVOracle(collateralOracle_).decimals();
     }
 
     /* ============ Interactive Functions ============ */
@@ -113,11 +114,11 @@ contract RepoDvP is IRepoDvP {
     ///         and lender must be verified in the live ERC-3643 `IdentityRegistry` of both the collateral token
     ///         and the cash token. No tokens move during proposal; opening collateral is sized dynamically at
     ///         acceptance from `initialMarginBps` and bounded by `maxCollateralAmount`.
-    /// @param  lender                Designated lender address authorized to accept the proposal (non-zero, not borrower).
+    /// @param  lender                Designated lender address authorized to accept (non-zero, not borrower).
     /// @param  borrowAmount          Cash principal to borrow in `cashToken` units (18 decimals).
     /// @param  repoRateBps           Annualized repo interest rate in basis points (Actual/360).
     /// @param  initialMarginBps      Initial over-collateralization margin in bps over `borrowAmount` (max 5,000 bps).
-    /// @param  maintenanceMarginBps  Maintenance margin threshold in bps over the accruing repurchase price (`<= initialMarginBps`).
+    /// @param  maintenanceMarginBps  Maintenance margin in bps over the repurchase price (`<= initialMarginBps`).
     /// @param  termSeconds           Duration of the repo from acceptance to maturity in seconds (1s to 365 days).
     /// @param  curePeriodSeconds     Grace period in seconds for the borrower to cure a margin call (`<= termSeconds`).
     /// @param  maxCollateralAmount   Maximum `collateralToken` units the borrower consents to post at acceptance.
@@ -171,11 +172,11 @@ contract RepoDvP is IRepoDvP {
     }
 
     /// @notice Accepts a pending repo proposal and executes the Opening Leg via atomic Delivery-versus-Payment (DvP).
-    /// @dev    Callable only by the designated `order.lender` while `status == Proposed` and `block.timestamp <= acceptDeadline`.
-    ///         Sizes required opening collateral from `borrowAmount`, `initialMarginBps`, and the live oracle NAV price
+    /// @dev    Callable only by `order.lender` while `status == Proposed` and `block.timestamp <= acceptDeadline`.
+    ///         Sizes required opening collateral from `borrowAmount`, `initialMarginBps`, and the live oracle NAV
     ///         (rounded up in the lender's favor). Reverts with `CollateralAboveCap` if the required units exceed
-    ///         `order.maxCollateralAmount`. Atomically pulls collateral from borrower into contract escrow and transfers
-    ///         cash principal directly from lender to borrower.
+    ///         `order.maxCollateralAmount`. Atomically pulls collateral from borrower into contract escrow and
+    ///         transfers cash principal directly from lender to borrower.
     /// @param  repoId  Identifier of the proposed repo agreement to accept.
     function acceptRepo(uint256 repoId) external {
         RepoOrder storage order = orders[repoId];
@@ -193,7 +194,7 @@ contract RepoDvP is IRepoDvP {
         uint256 requiredInitialCollateralValue =
             (order.borrowAmount * (BPS_DENOMINATOR + order.initialMarginBps)) / BPS_DENOMINATOR;
         uint256 requiredInitialCollateralAmount = Math.ceilDiv(
-            requiredInitialCollateralValue * ORACLE_PRICE_PRECISION,
+            requiredInitialCollateralValue * oraclePricePrecision,
             getCollateralPrice()
         );
         if (requiredInitialCollateralAmount > order.maxCollateralAmount) {
@@ -266,9 +267,9 @@ contract RepoDvP is IRepoDvP {
         emit RepoSettled(repoId, totalRepurchasePrice, returnCollateral, uint40(block.timestamp));
     }
 
-    /// @notice Triggers an on-chain margin call when mark-to-market collateral value breaches the maintenance threshold.
+    /// @notice Triggers an on-chain margin call when mark-to-market collateral value breaches maintenance margin.
     /// @dev    Permissionless while `status == Active`. Reverts with `MarginSufficient` if `isMarginHealthy(repoId)`
-    ///         is true. Transitions status to `MarginCalled` and sets `cureDeadline = block.timestamp + curePeriodSeconds`.
+    ///         is true. Transitions status to `MarginCalled` and sets `cureDeadline = block.timestamp + curePeriod`.
     /// @param  repoId  Identifier of the active repo agreement to evaluate.
     function marginCall(uint256 repoId) external {
         RepoState storage state = states[repoId];
@@ -310,13 +311,13 @@ contract RepoDvP is IRepoDvP {
     }
 
     /// @notice Executes default close-out netting upon post-maturity non-payment or an expired, uncured margin call.
-    /// @dev    Callable only by `order.lender` when either (`(status == Active || status == MarginCalled) && block.timestamp > maturity`)
+    /// @dev    Callable only by `order.lender` when (`(Active || MarginCalled) && block.timestamp > maturity`)
     ///         or (`status == MarginCalled && block.timestamp > cureDeadline && !isMarginHealthy(repoId)`).
-    ///         Seizes escrowed collateral worth `getCurrentRepurchasePrice(repoId)` at the live oracle NAV price (rounded up,
+    ///         Seizes escrowed collateral worth `getCurrentRepurchasePrice(repoId)` at the live oracle NAV (rounded up,
     ///         capped at `state.collateralAmount`) and transfers it to the lender.
-    ///         POC simplification: any `surplusCollateral` is pushed directly to `order.borrower` in the same tx so escrow
-    ///         ends empty. If `order.borrower` is frozen or de-verified in ERC-3643 when `surplusCollateral > 0`, the push
-    ///         reverts; in production, surplus can be credited to a pull-claim mapping or routed via a compliance escrow.
+    ///         POC simplification: any `surplusCollateral` is pushed directly to `order.borrower` in the same tx.
+    ///         If `order.borrower` is frozen or de-verified in ERC-3643 when `surplusCollateral > 0`, the push
+    ///         reverts; in production, surplus can be credited to a pull-claim mapping or compliance escrow.
     /// @param  repoId  Identifier of the defaulting repo agreement.
     function claimDefault(uint256 repoId) external {
         RepoOrder storage order = orders[repoId];
@@ -337,7 +338,7 @@ contract RepoDvP is IRepoDvP {
         // Close-out netting: the lender seizes collateral worth exactly the amount owed (rounded up), no margin.
         uint256 seizedCollateral = Math.min(
             state.collateralAmount,
-            Math.ceilDiv(amountOwed * ORACLE_PRICE_PRECISION, getCollateralPrice())
+            Math.ceilDiv(amountOwed * oraclePricePrecision, getCollateralPrice())
         );
         uint256 surplusCollateral = state.collateralAmount - seizedCollateral;
 
@@ -392,11 +393,11 @@ contract RepoDvP is IRepoDvP {
     }
 
     /// @notice Calculates the current mark-to-market EUR value (18 decimals) of a repo's escrowed collateral.
-    /// @dev    Formula: `(collateralAmount * getCollateralPrice()) / 1e8`.
+    /// @dev    Formula: `(collateralAmount * getCollateralPrice()) / oraclePricePrecision`.
     /// @param  repoId              Identifier of the repo agreement.
     /// @return collateralValueEUR  Mark-to-market collateral value in EUR (18 decimals).
     function getCollateralValue(uint256 repoId) public view returns (uint256 collateralValueEUR) {
-        return (states[repoId].collateralAmount * getCollateralPrice()) / ORACLE_PRICE_PRECISION;
+        return (states[repoId].collateralAmount * getCollateralPrice()) / oraclePricePrecision;
     }
 
     /// @notice Calculates the minimum collateral value in EUR (18 decimals) required to satisfy `maintenanceMarginBps`.
@@ -409,12 +410,12 @@ contract RepoDvP is IRepoDvP {
             BPS_DENOMINATOR;
     }
 
-    /// @notice Calculates the minimum `collateralToken` units (18 decimals) required to satisfy `maintenanceMarginBps` at the current price.
-    /// @dev    Formula: `ceilDiv(getRequiredCollateralValue(repoId) * 1e8, getCollateralPrice())`.
+    /// @notice Calculates the minimum `collateralToken` units (18 decimals) required to satisfy `maintenanceMarginBps`.
+    /// @dev    Formula: `ceilDiv(getRequiredCollateralValue(repoId) * oraclePricePrecision, getCollateralPrice())`.
     /// @param  repoId          Identifier of the repo agreement.
     /// @return requiredAmount  Minimum required collateral token units (18 decimals).
     function getRequiredCollateralAmount(uint256 repoId) public view returns (uint256 requiredAmount) {
-        return Math.ceilDiv(getRequiredCollateralValue(repoId) * ORACLE_PRICE_PRECISION, getCollateralPrice());
+        return Math.ceilDiv(getRequiredCollateralValue(repoId) * oraclePricePrecision, getCollateralPrice());
     }
 
     /// @notice Checks whether a repo's escrowed collateral value meets or exceeds its maintenance margin requirement.

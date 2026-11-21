@@ -29,7 +29,8 @@ contract nhNAVOracle is InhNAVOracle, AccessControl {
 
     /// @notice Publishes a new certified Net Asset Value (NAV) per `nhBOND` unit in EUR (8 decimals).
     /// @dev    Callable only by `CALCULATION_AGENT_ROLE`. Reverts with `InvalidNAV` if `navEur <= 0`.
-    ///         Increments `_roundId`, stores `_price = navEur` and `_updatedAt = block.timestamp`, and emits `NAVSubmitted`.
+    ///         Increments `_roundId`, stores `_price = navEur` and `_updatedAt = block.timestamp`,
+    ///         and emits `NAVSubmitted`.
     /// @param  navEur  Positive EUR NAV price scaled to 8 decimals (e.g. `100_00000000` = €100.00).
     function updateNAV(int256 navEur) external onlyRole(CALCULATION_AGENT_ROLE) {
         if (navEur <= 0) revert InvalidNAV();

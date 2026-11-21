@@ -86,7 +86,7 @@ interface IRepoDvP {
     /// @param  borrowAmount          Cash principal to borrow in `cashToken` units (18 decimals).
     /// @param  repoRateBps           Annualized repo interest rate in basis points (Actual/360).
     /// @param  initialMarginBps      Initial over-collateralization margin in bps over `borrowAmount` (max 5,000 bps).
-    /// @param  maintenanceMarginBps  Maintenance margin threshold in bps over the accruing repurchase price (`<= initialMarginBps`).
+    /// @param  maintenanceMarginBps  Maintenance margin in bps over the repurchase price (`<= initialMarginBps`).
     /// @param  termSeconds           Duration of the repo from acceptance to maturity in seconds (1s to 365 days).
     /// @param  curePeriodSeconds     Grace period in seconds for the borrower to cure a margin call (`<= termSeconds`).
     /// @param  maxCollateralAmount   Maximum `collateralToken` units the borrower consents to post at acceptance.
@@ -167,7 +167,7 @@ interface IRepoDvP {
     /// @return requiredValue  Minimum required collateral value in EUR (18 decimals).
     function getRequiredCollateralValue(uint256 repoId) external view returns (uint256 requiredValue);
 
-    /// @notice Minimum collateral token units (18 decimals) required to satisfy `maintenanceMarginBps` at the current price.
+    /// @notice Minimum collateral token units (18 decimals) required to satisfy `maintenanceMarginBps` at live price.
     /// @param  repoId          Identifier of the repo agreement.
     /// @return requiredAmount  Minimum required collateral token units (18 decimals).
     function getRequiredCollateralAmount(uint256 repoId) external view returns (uint256 requiredAmount);
@@ -188,4 +188,7 @@ interface IRepoDvP {
 
     /// @notice Address of the collateral price oracle (`nhNAVOracle`).
     function collateralOracle() external view returns (address);
+
+    /// @notice Oracle price precision derived from `collateralOracle.decimals()` (`10 ** decimals()`).
+    function oraclePricePrecision() external view returns (uint256);
 }

@@ -86,7 +86,7 @@ A repurchase agreement is a secured short-term loan structured as two legs:
 ### What Moves On-Chain vs. What Stays Off-Chain
 
 - **Moves On-Chain:**
-  1. **Collateral Leg (`nhBOND NAV`):** Permissioned ERC-3643 (T-REX) token representing sovereign bond fund units, restricted to KYC-verified `ONCHAINID` wallets.
+  1. **Collateral Leg (`nhBOND` / `nhBOND NAV`):** Permissioned ERC-3643 (T-REX) token representing a tokenised EUR sovereign government bond (German Bund `DE0001102580`, €100 par, 2.50% coupon, Level 1 HQLA) marked to market on-chain, restricted to KYC-verified `ONCHAINID` wallets.
   2. **Cash Leg (`nhEUR`):** Permissioned tokenised commercial bank deposit (modeled on J.P. Morgan’s `JPMD`), minted/burned against core banking fiat credits.
   3. **Agreement & Escrow Logic (`RepoDvP`):** Atomic DvP/RvP execution, dynamic opening collateral sizing from `nhNAVOracle`, per-second Actual/360 interest accrual, margin call timers, and default close-out netting.
 - **Stays Off-Chain:**

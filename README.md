@@ -47,10 +47,33 @@ This repository delivers a testnet-ready, production-grade Proof of Concept (POC
 
 ### Institutional Design Choices:
 
-- **Collateral Leg (`nhBOND NAV`):** Built strictly on the official **ERC-3643 (T-REX)** token standard (`IERC3643`), representing European sovereign bond fund units valued at Net Asset Value (NAV). Enforces on-chain identity verification (`IdentityRegistry` / `ONCHAINID`), modular transfer rules (`ModularCompliance`), partial/wallet freezing, and regulatory forced transfers.
+- **Collateral Leg (`nhBOND` / `nhBOND NAV`):** Built strictly on the official **ERC-3643 (T-REX)** token standard (`IERC3643`), representing a tokenised EUR sovereign government bond (German Bund ISIN `DE0001102580`, €100.00 par, 2.50% coupon, Level 1 HQLA) whose mark-to-market price / Net Asset Value per unit is published on-chain. Enforces on-chain identity verification (`IdentityRegistry` / `ONCHAINID`), modular transfer rules (`ModularCompliance`), partial/wallet freezing, and regulatory forced transfers.
 - **Cash Leg (`nhEUR`):** Structured as an institutional **Tokenised Commercial Bank Deposit** modeled after **J.P. Morgan's JPM Coin (`JPMD`)** (deployed at `0xb2906cCED1b2c8330480414CeFA1eb52bDBd73A3` on Ethereum Mainnet). Incorporates role-based banking controls (`TREASURY_ROLE`, `COMPLIANCE_ROLE`), shared ERC-3643 `IdentityRegistry` checks, account freeze/pause guardrails, and EIP-2612 permit support.
-- **Minimal Fund NAV Oracle (`nhNAVOracle`):** Modeled after institutional tokenised money market and bond funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink's `AggregatorV3Interface` with calculation agent attestations and `updatedAt` round timestamps while keeping the POC oracle intentionally simple (no on-chain staleness cutoff).
+- **Minimal Bond Price / NAV Oracle (`nhNAVOracle`):** Modeled after the calculation-agent attestation architecture used by institutional tokenised fixed-income instruments (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink's `AggregatorV3Interface` with calculation agent attestations and `updatedAt` round timestamps while keeping the POC oracle intentionally simple (no on-chain staleness cutoff).
 - **Settlement & Escrow (`RepoDvP`):** Functions as an automated decentralized **Tri-Party Collateral Agent** under the EU Financial Collateral Directive (Directive 2002/47/EC), eliminating counterparty rehypothecation and settlement failure risk, with GMRA-aligned close-out netting on default.
+
+### Key Design Assumptions & Institutional Calls
+
+Per the brief (_"Where the brief is ambiguous, make a call, write down the assumption and move on"_), three explicit architectural calls were made for this POC:
+
+1. **Opening Leg Collateral Destination — Tri-Party Smart Contract Escrow vs. Lender Wallet (Brief Item 3b):**
+   - _Assumption:_ Instead of transferring `nhBOND` directly to the lender's EOA wallet on the opening leg, `RepoDvP` locks collateral in neutral smart-contract escrow (`address(this)`).
+   - _Rationale:_ If collateral moved to the lender's wallet, the lender could transfer, rehypothecate, or have their wallet frozen before maturity—breaking the guaranteed atomic Closing Leg (`settleRepo`) required by Item 3c. Escrow custody mirrors a tri-party collateral agent and mathematically guarantees that collateral returns atomically the instant the borrower repays.
+2. **Proposal Role Symmetry & Dynamic Oracle Sizing (Brief Item 3a):**
+   - _Assumption:_ Proposals are borrower-initiated (`msg.sender` is the cash borrower and names the `lender` who must call `acceptRepo`), and specify `initialMarginBps` + a slippage cap (`maxCollateralAmount`) rather than a static collateral token count.
+   - _Rationale:_ Prevents a proposer from accepting their own order against a counterparty's pre-existing ERC-20 allowance without consent, and ensures that if the oracle price moves between proposal and acceptance, `acceptRepo` sizes collateral accurately at the live opening price (reverting with `CollateralAboveCap` if the required units exceed the borrower's cap).
+3. **Default Close-Out Netting & POC Push-Surplus (Brief Item 3c / Default):**
+   - _Assumption:_ On default (`claimDefault`), rather than forfeiting 100% of escrowed collateral, `RepoDvP` executes GMRA-aligned **close-out netting**: the lender seizes collateral worth the exact accrued repurchase price (`amountOwed`) at the live oracle price, and any `surplusCollateral` is pushed back to the borrower in the same transaction (keeping the escrow solvency invariant minimal for the POC; a production Phase 2 deployment can isolate surplus into a pull-claim mapping in case a defaulting borrower is frozen under ERC-3643).
+
+### Deployed & Verified Contracts (Ethereum Sepolia — Chain ID `11155111`)
+
+| Contract               | Role                                                      | Sepolia Address / Etherscan |
+| :--------------------- | :-------------------------------------------------------- | :-------------------------- |
+| **`RepoDvP`**          | Atomic DvP/RvP Settlement & Margin Escrow Engine          | `TBD_ON_SEPOLIA_DEPLOY`     |
+| **`nhBOND`**           | ERC-3643 Tokenised EUR Sovereign Bond (`DE0001102580`)    | `TBD_ON_SEPOLIA_DEPLOY`     |
+| **`nhEUR`**            | Tokenised EUR Commercial Bank Deposit (JPM Coin Model)    | `TBD_ON_SEPOLIA_DEPLOY`     |
+| **`nhNAVOracle`**      | Chainlink `AggregatorV3Interface` Bond Price / NAV Oracle | `TBD_ON_SEPOLIA_DEPLOY`     |
+| **`IdentityRegistry`** | Official ERC-3643 / T-REX On-Chain KYC Registry           | `TBD_ON_SEPOLIA_DEPLOY`     |
 
 ---
 
@@ -58,6 +81,12 @@ This repository delivers a testnet-ready, production-grade Proof of Concept (POC
 
 ```
 evm-dvp-repo/
+├── app/                                  # Settlement Console web UI (Vite + React + TypeScript + viem)
+│   ├── scripts/gen-abi.mjs               # Generates app/src/lib/abi.ts from Foundry build output
+│   └── src/
+│       ├── components/                   # Institutional UI primitives, gauges, and layout shell
+│       ├── lib/                          # Chain client, mirrored repo math (repo.ts), and state store
+│       └── screens/                      # Borrower, Lender, Position, Propose, Market, and Identity tabs
 ├── docs/
 │   ├── ARCHITECTURE_SPEC.md              # Complete technical architecture specification
 │   ├── ARCHITECTURAL_NOTES.md            # Notes on simplified workflows & peripheral extensions
@@ -68,10 +97,10 @@ evm-dvp-repo/
 │   ├── forge-std/                        # Foundry standard testing library
 │   └── openzeppelin-contracts/           # OpenZeppelin Contracts v5.7.0
 ├── src/
-│   ├── nhBOND.sol                        # Tokenised sovereign bond NAV deriving from ERC-3643
+│   ├── nhBOND.sol                        # Tokenised sovereign bond deriving from official ERC-3643
 │   ├── nhEUR.sol                         # Tokenised EUR commercial bank deposit (JPM Coin model)
 │   ├── RepoDvP.sol                       # Core DvP/RvP settlement and margin engine
-│   ├── nhNAVOracle.sol                   # Production RWA MMF NAV Oracle (BUIDL / OUSG model)
+│   ├── nhNAVOracle.sol                   # Chainlink AggregatorV3-compatible bond price / NAV oracle
 │   └── interfaces/
 │       ├── IIdentityRegistry.sol         # isVerified() + token identityRegistry() views (DvP reads each leg's registry live)
 │       ├── InhNAVOracle.sol
@@ -94,15 +123,20 @@ evm-dvp-repo/
 │   │   ├── RepoInvariant.t.sol           # Continuous contract solvency & zero trapped cash
 │   │   └── RepoHandler.sol               # Invariant campaign action wrapper
 │   ├── mock/
-│   │   └── MockIdentity.sol              # Lightweight test ONCHAINID contract
+│   │   ├── MockIdentity.sol              # Lightweight test ONCHAINID contract
+│   │   └── MockIdentityRegistry.sol      # Registry mock for live registry-rotation unit tests
 │   └── utils/
 │       └── RepoTestBase.sol              # Institutional test fixture deploying authentic T-REX suite
 └── script/
     ├── helper/
-    │   ├── TREXDeployer.sol              # Solc 0.8.17 deployer for authentic T-REX contracts
+    │   ├── TREXSuiteDeployment.sol       # EIP-170-safe per-contract T-REX & nhBOND deployer for Sepolia
+    │   ├── TREXDeployer.sol              # Solc 0.8.17 in-memory suite deployer for Foundry test fixtures
     │   └── ITREXDeployer.sol             # Type-safe interface bridge for Solc 0.8.34
+    ├── local/
+    │   └── deploy-local.sh               # One-command local Anvil deployment + app/.env.local setup
     └── deploy/
-        └── DeployAll.s.sol               # Automated Sepolia deployment & demo seeding script
+        ├── DeployAll.s.sol               # Automated Sepolia deployment & demo seeding script
+        └── OnboardDesk.s.sol             # Standalone script to register & fund additional trading desks
 ```
 
 ---
@@ -247,3 +281,14 @@ forge verify-contract <NH_BOND_ADDRESS> src/nhBOND.sol:nhBOND \
 2. Lender calls `repoDvP.claimDefault(repoId)`.
 3. **Close-Out Netting:** The contract seizes collateral worth the exact repurchase price owed (`amountOwed`) at the live oracle price and returns any `surplusCollateral` to the borrower in the same transaction.
 4. Contract emits `RepoDefaulted(repoId, lender, amountOwed, collateralSeized, surplusCollateral, reason)`.
+
+---
+
+## 6. Tools, Frameworks & AI Assistance Disclosure
+
+Per the case study guidelines (_"Any language, framework or AI assistant you like. Tell us what you used and where"_):
+
+- **Smart Contracts & Testing:** Solidity (`0.8.34` & `0.8.17`), **Foundry** (`forge`, `cast`, `anvil` for unit, integration, 5,000-run fuzz, and 512-run invariant testing), official **ERC-3643 (T-REX)** framework (`lib/ERC-3643`), and **OpenZeppelin Contracts v5.7.0**.
+- **Settlement Console (`app/`):** TypeScript, **React 19**, **Vite 8**, and **viem** for direct browser-wallet interaction and real-time event indexing against Sepolia / Anvil.
+- **Static Analysis & Linting:** **Solhint**, **Prettier (`prettier-plugin-solidity`)**, and **Slither**.
+- **AI Assistance:** AI coding assistants (Claude Code / Gemini in Antigravity IDE) were used to accelerate documentation formatting and diagrams (`docs/`), scaffold the React/viem Settlement Console UI (`app/`), expand Foundry fuzz/invariant test coverage, and perform adversarial code-review passes on state-machine edge cases (such as close-out netting under recovered margin calls and ERC-3643 compliance interactions). All financial architecture decisions, legal/regulatory framing (EU FCD/SFD, GMRA 2011 Annex, Basel III SCO60), and core settlement invariants were directed and verified by the author.

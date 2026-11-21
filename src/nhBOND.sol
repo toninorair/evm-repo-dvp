@@ -32,7 +32,7 @@ contract nhBOND is Token, InhBOND {
     /// @notice Configures sovereign bond static master data and linked NAV oracle.
     /// @dev    Callable only by the ERC-3643 token owner (`onlyOwner`). Assumes a coupon-bearing sovereign bond
     ///         (`couponRateBps_ > 0`). Kept re-callable by `onlyOwner` in the POC for testnet/demo reconfiguration;
-    ///         in production, static bond master data (`isin`, `maturityDate`, `couponRateBps`) would be locked at init.
+    ///         in production, static master data (`isin`, `maturityDate`, `couponRateBps`) would be locked at init.
     /// @param  isin_           Non-empty ISIN string identifier for the sovereign bond.
     /// @param  maturityDate_   Non-zero maturity Unix timestamp.
     /// @param  couponRateBps_  Non-zero annual coupon rate in basis points.
@@ -54,7 +54,7 @@ contract nhBOND is Token, InhBOND {
     /* ============ Banking / Issuance Functions ============ */
 
     /// @notice Issues new sovereign bond tokens in the primary market to a verified institutional investor.
-    /// @dev    Callable only by an authorized ERC-3643 token agent (`onlyAgent`). Delegates to ERC-3643 `mint(to, amount)`,
+    /// @dev    Callable only by an authorized ERC-3643 token agent (`onlyAgent`). Delegates to ERC-3643 `mint`,
     ///         which enforces `IdentityRegistry.isVerified(to)` and `ModularCompliance.canTransfer`.
     /// @param  to      Verified recipient wallet address.
     /// @param  amount  Number of `nhBOND` units (18 decimals) to issue.

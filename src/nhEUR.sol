@@ -134,9 +134,9 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
 
     /* ============ Internal Functions ============ */
 
-    /// @notice Internal transfer hook enforcing pause status, account-level freeze checks, and ERC-3643 KYC verification.
-    /// @dev    Overrides `ERC20._update`. For non-zero `from` (transfers and burns) and non-zero `to` (transfers and mints),
-    ///         reverts with `AccountIsFrozen` if the party is frozen or `NotKYCVerified` if `!identityRegistry.isVerified(party)`.
+    /// @notice Internal transfer hook enforcing pause, account-level freeze checks, and ERC-3643 KYC verification.
+    /// @dev    Overrides `ERC20._update`. For non-zero `from` (transfers/burns) and non-zero `to` (transfers/mints),
+    ///         reverts with `AccountIsFrozen` if frozen or `NotKYCVerified` if `!identityRegistry.isVerified(party)`.
     /// @param  from   Sender address (`address(0)` on mint).
     /// @param  to     Recipient address (`address(0)` on burn).
     /// @param  value  Amount of `nhEUR` tokens transferred, minted, or burned.

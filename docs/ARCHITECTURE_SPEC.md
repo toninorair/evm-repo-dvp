@@ -18,9 +18,9 @@ Nordhaven Bank’s Treasury and Securities Financing desk operates an institutio
 
 This architecture specifies a **24/7, atomic Delivery-versus-Payment (DvP) repurchase agreement engine on public Ethereum (Sepolia)**. It targets a lean, auditable Proof of Concept (POC) built around four institutional components:
 
-- **Collateral Leg (`nhBOND NAV`):** Strictly implemented using the official **ERC-3643 (T-REX)** token standard, representing tokenised European sovereign bond fund units valued at continuous Net Asset Value (**`nhBOND NAV`**), incorporating on-chain identity verification (`ONCHAINID`), claim topics, and modular compliance rules.
+- **Collateral Leg (`nhBOND` / `nhBOND NAV`):** Strictly implemented using the official **ERC-3643 (T-REX)** token standard, representing a tokenised European sovereign government bond (German Bund ISIN `DE0001102580`, €100.00 par, 2.50% coupon, Level 1 HQLA) valued on-chain at continuous Net Asset Value / mark-to-market price (**`nhBOND NAV`**), incorporating on-chain identity verification (`ONCHAINID`), claim topics, and modular compliance rules.
 - **Cash Leg (`nhEUR`):** Structured as a **Tokenised Commercial Bank Deposit** modeled after **J.P. Morgan’s JPM Coin (`JPMD`)** (deployed on Ethereum Mainnet at `0xb2906cCED1b2c8330480414CeFA1eb52bDBd73A3`), featuring role-based banking controls, shared ERC-3643 identity verification, account freeze/pause guardrails, and EIP-2612 permit support.
-- **Real Fund NAV Oracle (`nhNAVOracle`):** A Net Asset Value (NAV) Oracle modeling real-world tokenised money market and bond funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink’s `AggregatorV3Interface` with calculation agent attestation and round timestamps (`updatedAt`).
+- **Bond Price / NAV Oracle (`nhNAVOracle`):** A Net Asset Value / bond price oracle modeling the calculation-agent attestation pattern used by institutional tokenised fixed-income instruments (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink’s `AggregatorV3Interface` with calculation agent attestation and round timestamps (`updatedAt`).
 - **Settlement & Escrow Engine (`RepoDvP`):** Operating as an automated decentralized tri-party collateral agent with on-chain bilateral proposal and acceptance, dynamic opening collateral sizing capped by `maxCollateralAmount`, Actual/360 per-second money market interest accrual, programmable margin calls, and close-out netting on default.
 
 ---
@@ -58,7 +58,7 @@ This architecture specifies a **24/7, atomic Delivery-versus-Payment (DvP) repur
 
 1. **Collateral Token (`nhBOND.sol` - Authentic ERC-3643 / T-REX Framework):**
    - Derives directly from the authentic open-source **`lib/ERC-3643`** implementation (`Token.sol:Token`, compiled under `solc 0.8.17`).
-   - Represents a tokenised European sovereign bond portfolio / fund unit valued at Net Asset Value (**`nhBOND NAV`**, e.g. 10Y German Bund / French OAT). Token Name: `Nordhaven Sovereign Bond NAV`, Symbol: `nhBOND NAV`.
+   - Represents a tokenised European sovereign government bond (10Y German Bund ISIN `DE0001102580`, €100.00 par, 2.50% coupon) marked to market via its continuous Net Asset Value / dirty price (**`nhBOND NAV`**). Token Name: `Nordhaven Sovereign Bond NAV`, Symbol: `nhBOND NAV`.
    - Adds sovereign bond master metadata (`isin`, `maturityDate`, `couponRateBps`, `navOracle`) and agent-controlled primary market lifecycle methods (`issue`, `redeem`).
    - Connected to the official T-REX compliance suite:
      - **`IdentityRegistry` (`IIdentityRegistry`):** Maps counterparty Ethereum addresses to their respective on-chain digital identities (`ONCHAINID`).
@@ -164,7 +164,7 @@ $$\text{Current Repurchase Price} = \text{Borrow Amount} + \text{Interest}$$
 
 ### 5.2 Initial Margin & Opening Collateral Sizing
 
-At proposal time, the borrower specifies an initial margin buffer $m_{\text{init}}$ (in basis points, up to `MAX_INITIAL_MARGIN_BPS = 5,000` / $50\%$) and a slippage protection cap `maxCollateralAmount`. When the lender calls `acceptRepo()`, the required collateral is sized at the live oracle NAV price (8 decimals, `ORACLE_PRICE_PRECISION` $= 10^8$):
+At proposal time, the borrower specifies an initial margin buffer $m_{\text{init}}$ (in basis points, up to `MAX_INITIAL_MARGIN_BPS = 5,000` / $50\%$) and a slippage protection cap `maxCollateralAmount`. When the lender calls `acceptRepo()`, the required collateral is sized at the live oracle NAV price (8 decimals, `oraclePricePrecision` $= 10^8$):
 
 $$\text{Required Initial Collateral Value (EUR)} = \left\lfloor \frac{\text{Borrow Amount} \times (10,000 + m_{\text{init}})}{10,000} \right\rfloor$$
 
@@ -408,6 +408,7 @@ interface IRepoDvP {
   function collateralToken() external view returns (address);
   function cashToken() external view returns (address);
   function collateralOracle() external view returns (address);
+  function oraclePricePrecision() external view returns (uint256);
 }
 ```
 

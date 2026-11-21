@@ -33,6 +33,10 @@ else
     gasReport="--gas-report"
 fi
 
+# Tests deploy the T-REX suite by artifact name (deployCode), so build script/ too; filtered
+# forge test runs only compile the files they import.
+forge build
+
 if [ -z "$test" ]; then
 	if [ -z "$directory" ]; then
 		forge test --match-path "test/*" $gasReport $verbosity

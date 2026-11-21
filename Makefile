@@ -36,7 +36,7 @@ coverage:
 	FOUNDRY_PROFILE=$(profile) forge coverage --report lcov && lcov --ignore-errors inconsistent --extract lcov.info -o lcov.info 'src/*' && genhtml lcov.info -o coverage
 
 gas-report:
-	FOUNDRY_PROFILE=$(profile) forge test --gas-report > gasreport.ansi
+	FOUNDRY_PROFILE=$(profile) forge build && FOUNDRY_PROFILE=$(profile) forge test --gas-report > gasreport.ansi
 
 sizes:
 	@./build.sh -p production -s

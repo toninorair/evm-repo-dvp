@@ -130,8 +130,8 @@ export function closeOut(repo: Repo, price: bigint, now: number) {
 /** Which remedy, if any, claimDefault() would accept right now. */
 export function defaultReason(repo: Repo, price: bigint, now: number): 'maturity' | 'cure' | undefined {
   const s = repo.state.status
-  if (s === RepoStatus.Active && now > repo.state.maturity) return 'maturity'
   if (s === RepoStatus.MarginCalled && now > repo.state.cureDeadline && !margin(repo, price, now).healthy) return 'cure'
+  if (isOpen(s) && now > repo.state.maturity) return 'maturity'
   return undefined
 }
 

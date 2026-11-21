@@ -3,9 +3,7 @@ pragma solidity 0.8.34;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-
 import { IIdentityRegistry, IIdentityRegistryBound } from "./interfaces/IIdentityRegistry.sol";
 import { InhNAVOracle } from "./interfaces/InhNAVOracle.sol";
 import { IRepoDvP } from "./interfaces/IRepoDvP.sol";
@@ -14,7 +12,7 @@ import { IRepoDvP } from "./interfaces/IRepoDvP.sol";
 /// @notice Delivery-versus-Payment (DvP) smart contract engine for tokenised repurchase agreements.
 /// @dev    Provides atomic gross settlement, Actual/360 interest calculations, and programmable margin management.
 /// @author Ethereum Institutional / Nordhaven Bank
-contract RepoDvP is IRepoDvP, ReentrancyGuard {
+contract RepoDvP is IRepoDvP {
     using SafeERC20 for IERC20;
 
     /* ============ Enums ============ */
@@ -49,10 +47,9 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
     /// @notice Dynamic operational and settlement state of a repo agreement.
     struct RepoState {
         RepoStatus status;
+        uint256 collateralAmount;
         uint40 startTime;
         uint40 maturity;
-        uint256 collateralAmount;
-        // Margin call
         uint40 cureDeadline;
     }
 
@@ -69,7 +66,7 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
     /// @notice Oracle price precision (8 decimals, Chainlink AggregatorV3 convention).
     uint256 public constant ORACLE_PRICE_PRECISION = 1e8;
 
-    /// @notice Maximum allowed initial margin over the repurchase price (50.00% / 5,000 bps).
+    /// @notice Maximum allowed initial margin over the borrow amount (50.00% / 5,000 bps).
     uint32 public constant MAX_INITIAL_MARGIN_BPS = 5_000;
 
     /// @notice Maximum allowed term (1 year in seconds).
@@ -79,9 +76,6 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
 
     /// @notice Price oracle reporting sovereign bond EUR prices (Chainlink AggregatorV3).
     address public immutable collateralOracle;
-
-    /// @notice Maximum age (seconds) of the oracle price before it is rejected as stale.
-    uint256 public immutable maxPriceAge;
 
     /// @notice The collateral (securities leg) token accepted by this engine, e.g. nhBOND.
     address public immutable collateralToken;
@@ -104,12 +98,10 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
 
     /// @notice Constructs the RepoDvP settlement contract.
     /// @param  collateralOracle_    Address of the collateral price oracle.
-    /// @param  maxPriceAge_         Maximum accepted age of the oracle price, in seconds.
     /// @param  collateralToken_     Address of the collateral token.
     /// @param  cashToken_           Address of the cash token.
-    constructor(address collateralOracle_, uint256 maxPriceAge_, address collateralToken_, address cashToken_) {
+    constructor(address collateralOracle_, address collateralToken_, address cashToken_) {
         if ((collateralOracle = collateralOracle_) == address(0)) revert ZeroPriceOracle();
-        if ((maxPriceAge = maxPriceAge_) == 0) revert ZeroMaxPriceAge();
         if ((collateralToken = collateralToken_) == address(0)) revert ZeroCollateralToken();
         if ((cashToken = cashToken_) == address(0)) revert ZeroCashToken();
     }
@@ -127,14 +119,14 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
         uint32 curePeriodSeconds,
         uint256 maxCollateralAmount,
         uint40 acceptDeadline
-    ) external nonReentrant returns (uint256 repoId) {
+    ) external returns (uint256 repoId) {
         // The borrower proposes (msg.sender); the lender is the named counterparty who must accept.
         address borrower = msg.sender;
 
         if (lender == address(0) || borrower == lender) revert InvalidLender();
         if (borrowAmount == 0 || maxCollateralAmount == 0) revert ZeroAmount();
         if (initialMarginBps > MAX_INITIAL_MARGIN_BPS) revert InitialMarginInvalid();
-        if (maintenanceMarginBps >= initialMarginBps) revert MaintenanceMarginInvalid();
+        if (maintenanceMarginBps > initialMarginBps) revert MaintenanceMarginInvalid();
         if (termSeconds == 0 || termSeconds > MAX_REPO_TERM_SECONDS) revert TermInvalid();
         if (curePeriodSeconds == 0 || curePeriodSeconds > termSeconds) revert CurePeriodInvalid();
         if (acceptDeadline <= block.timestamp) revert AcceptDeadlineInvalid();
@@ -165,7 +157,7 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
     }
 
     /// @inheritdoc IRepoDvP
-    function acceptRepo(uint256 repoId) external nonReentrant {
+    function acceptRepo(uint256 repoId) external {
         RepoOrder storage order = orders[repoId];
         RepoState storage state = states[repoId];
 
@@ -211,7 +203,7 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
     }
 
     /// @inheritdoc IRepoDvP
-    function cancelRepo(uint256 repoId) external nonReentrant {
+    function cancelRepo(uint256 repoId) external {
         RepoState storage state = states[repoId];
 
         if (msg.sender != orders[repoId].borrower) revert Unauthorized();
@@ -223,7 +215,7 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
     }
 
     /// @inheritdoc IRepoDvP
-    function settleRepo(uint256 repoId) external nonReentrant {
+    function settleRepo(uint256 repoId) external {
         RepoOrder storage order = orders[repoId];
         RepoState storage state = states[repoId];
 
@@ -248,7 +240,7 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
     }
 
     /// @inheritdoc IRepoDvP
-    function marginCall(uint256 repoId) external nonReentrant {
+    function marginCall(uint256 repoId) external {
         RepoState storage state = states[repoId];
         if (state.status != RepoStatus.Active) revert InvalidState(state.status);
 
@@ -261,7 +253,7 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
     }
 
     /// @inheritdoc IRepoDvP
-    function topUpCollateral(uint256 repoId, uint256 topUpAmount) external nonReentrant {
+    function topUpCollateral(uint256 repoId, uint256 topUpAmount) external {
         if (topUpAmount == 0) revert ZeroAmount();
         if (msg.sender != orders[repoId].borrower) revert Unauthorized();
 
@@ -272,28 +264,29 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
 
         state.collateralAmount += topUpAmount;
 
-        IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), topUpAmount);
+        if (isMarginHealthy(repoId)) {
+            state.status = RepoStatus.Active;
+            state.cureDeadline = 0;
+        }
 
-        // Clear the margin call if the top-up restored a healthy level. If the oracle is unavailable the
-        // top-up still lands and the repo stays MarginCalled until a live price confirms the cure.
-        try this.isMarginHealthy(repoId) returns (bool healthy) {
-            if (healthy) {
-                state.status = RepoStatus.Active;
-                state.cureDeadline = 0;
-            }
-        } catch {}
+        IERC20(collateralToken).safeTransferFrom(msg.sender, address(this), topUpAmount);
 
         emit MarginToppedUp(repoId, topUpAmount, state.collateralAmount);
     }
 
     /// @inheritdoc IRepoDvP
-    function claimDefault(uint256 repoId) external nonReentrant {
+    /// @dev POC simplification: `surplusCollateral` is pushed directly to `order.borrower` in the same tx.
+    ///      If `order.borrower` is frozen or de-verified in ERC-3643 when `surplusCollateral > 0`, the transfer
+    ///      reverts; in production, surplus can be credited to a pull-claim mapping or routed via a compliance escrow.
+    function claimDefault(uint256 repoId) external {
         RepoOrder storage order = orders[repoId];
         RepoState storage state = states[repoId];
 
         if (msg.sender != order.lender) revert Unauthorized();
 
-        bool isMaturityBreach = (state.status == RepoStatus.Active) && (block.timestamp > state.maturity);
+        bool isMaturityBreach =
+            (state.status == RepoStatus.Active || state.status == RepoStatus.MarginCalled) &&
+                (block.timestamp > state.maturity);
         bool isMarginCureBreach =
             (state.status == RepoStatus.MarginCalled) &&
                 (block.timestamp > state.cureDeadline) &&
@@ -313,21 +306,25 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
 
         IERC20(collateralToken).safeTransfer(order.lender, seizedCollateral);
 
+        // POC simplification: push surplus back in the same tx so escrow ends empty.
+        // Note: if the borrower is frozen or de-verified in ERC-3643 while surplusCollateral > 0,
+        // this push reverts; production Phase 2 can isolate surplus in a pull-claim mapping.
         if (surplusCollateral > 0) {
             IERC20(collateralToken).safeTransfer(order.borrower, surplusCollateral);
         }
 
-        string memory reason = isMaturityBreach ? "Maturity Non-Payment" : "Margin Call Cure Expired";
+        string memory reason = isMarginCureBreach ? "Margin Call Cure Expired" : "Maturity Non-Payment";
         emit RepoDefaulted(repoId, order.lender, amountOwed, seizedCollateral, surplusCollateral, reason);
     }
 
     /* ============ View Functions ============ */
 
     /// @inheritdoc IRepoDvP
+    /// @dev Reads `latestRoundData()` from `collateralOracle` without enforcing an on-chain staleness window
+    ///      (POC simplification; fund NAVs update once daily off-chain). Reverts if the oracle price is `<= 0`.
     function getCollateralPrice() public view returns (uint256) {
-        (, int256 price, , uint256 updatedAt, ) = InhNAVOracle(collateralOracle).latestRoundData();
+        (, int256 price, , , ) = InhNAVOracle(collateralOracle).latestRoundData();
         if (price <= 0) revert InhNAVOracle.InvalidNAV();
-        if (block.timestamp - updatedAt > maxPriceAge) revert StalePrice(updatedAt, block.timestamp);
         return uint256(price);
     }
 

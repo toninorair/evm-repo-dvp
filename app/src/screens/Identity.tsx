@@ -34,8 +34,8 @@ export function Identity() {
   const [status, setStatus] = useState<IdentityStatus>()
   const [loadedRights, setRights] = useState<OperatorRights>()
   const [country, setCountry] = useState(String(COUNTRY_DE))
-  const [bonds, setBonds] = useState('100000')
-  const [cash, setCash] = useState('10000000')
+  const [bonds, setBonds] = useState('250000')
+  const [cash, setCash] = useState('25000000')
 
   const wallet = isAddress(input.trim()) ? (input.trim() as Address) : undefined
 

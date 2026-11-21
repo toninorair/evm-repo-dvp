@@ -372,7 +372,7 @@ function AcceptPanel({ repo }: { repo: Repo }) {
   ]
   const tradeChecks = [
     { label: 'Before the deadline', ok: !expired, fail: 'Expired', detail: dateTime(repo.order.acceptDeadline) },
-    { label: 'Oracle fresh', ok: !snapshot!.oracle.stale, fail: 'Stale' },
+    { label: 'Oracle has a NAV', ok: !snapshot!.oracle.invalid, fail: 'No NAV' },
     { label: 'Collateral within cap', ok: nav > 0n ? required <= repo.order.maxCollateralAmount : undefined, fail: 'Above cap', detail: `${amount(required, 2)} of ${amount(repo.order.maxCollateralAmount, 2)}` },
     { label: 'Borrower identity verified', ok: cp?.verified, fail: 'Not verified' },
     { label: 'Borrower free nhBOND balance', ok: cp ? cp.bondBalance >= required : undefined, fail: 'Insufficient' },
@@ -420,7 +420,7 @@ function MarginPanel({ repo }: { repo: Repo }) {
   const now = useNow()
   const nav = snapshot!.oracle.price
   const m = margin(repo, nav, now)
-  const canCall = repo.state.status === RepoStatus.Active && !m.healthy && !snapshot!.oracle.stale
+  const canCall = repo.state.status === RepoStatus.Active && !m.healthy && !snapshot!.oracle.invalid
   return (
     <div className="panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 18 }}>
       <div className="row" style={{ alignItems: 'baseline' }}>
@@ -530,7 +530,7 @@ function DefaultPanel({ repo }: { repo: Repo }) {
         )}
       </div>
       {isLender ? (
-        <button type="button" className={`btn block ${reason ? 'danger' : ''}`} disabled={busy || !reason || snapshot!.oracle.stale} onClick={() => run('Default close-out', (st) => backend.claimDefault(repo, st))}>
+        <button type="button" className={`btn block ${reason ? 'danger' : ''}`} disabled={busy || !reason || snapshot!.oracle.invalid} onClick={() => run('Default close-out', (st) => backend.claimDefault(repo, st))}>
           {reason ? `Claim default · ${reason === 'maturity' ? 'maturity non-payment' : 'cure expired'}` : `Claim default · ${when}`}
         </button>
       ) : (

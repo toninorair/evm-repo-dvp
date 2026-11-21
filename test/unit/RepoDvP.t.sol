@@ -5,9 +5,10 @@ import { RepoDvP } from "../../src/RepoDvP.sol";
 import { RepoTestBase } from "../utils/RepoTestBase.sol";
 import { IRepoDvP } from "../../src/interfaces/IRepoDvP.sol";
 import { MockIdentityRegistry } from "../mock/MockIdentityRegistry.sol";
+import { AggregatorV3Interface, InhNAVOracle } from "../../src/interfaces/InhNAVOracle.sol";
 
 /// @title  RepoDvPTest
-/// @notice Unit tests for RepoDvP settlement engine covering DvP, RvP, and EIP-712 orders.
+/// @notice Unit tests for RepoDvP settlement engine covering DvP, RvP, dynamic collateral sizing, and live registry checks.
 /// @author Ethereum Institutional / Nordhaven Bank
 contract RepoDvPTest is RepoTestBase {
     uint256 internal constant CASH_PRINCIPAL = 10_000_000 ether; // €10,000,000
@@ -375,7 +376,21 @@ contract RepoDvPTest is RepoTestBase {
             CASH_PRINCIPAL,
             REPO_RATE_BPS,
             INITIAL_MARGIN_BPS,
-            INITIAL_MARGIN_BPS, // equal is rejected: maintenance must be strictly below initial
+            INITIAL_MARGIN_BPS + 1, // maintenance above initial is rejected
+            TERM_SECONDS,
+            CURE_PERIOD_SECONDS,
+            MAX_COLLATERAL_AMOUNT,
+            uint40(block.timestamp + 1 days)
+        );
+
+        // Equal margins are allowed.
+        vm.prank(bankA);
+        repoDvP.proposeRepo(
+            bankB,
+            CASH_PRINCIPAL,
+            REPO_RATE_BPS,
+            INITIAL_MARGIN_BPS,
+            INITIAL_MARGIN_BPS,
             TERM_SECONDS,
             CURE_PERIOD_SECONDS,
             MAX_COLLATERAL_AMOUNT,
@@ -415,11 +430,28 @@ contract RepoDvPTest is RepoTestBase {
         repoDvP.marginCall(repoId);
     }
 
-    function test_GetCollateralPrice_RevertsWhenStale() public {
-        uint256 updatedAt = block.timestamp;
-        vm.warp(block.timestamp + MAX_PRICE_AGE + 1);
-        vm.expectRevert(abi.encodeWithSelector(IRepoDvP.StalePrice.selector, updatedAt, block.timestamp));
+    function test_GetCollateralPrice_RevertsOnNegativeNAV() public {
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            abi.encode(uint80(1), int256(0), block.timestamp, block.timestamp, uint80(1))
+        );
+        vm.expectRevert(InhNAVOracle.InvalidNAV.selector);
         repoDvP.getCollateralPrice();
+
+        vm.mockCall(
+            address(oracle),
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            abi.encode(uint80(1), int256(-1), block.timestamp, block.timestamp, uint80(1))
+        );
+        vm.expectRevert(InhNAVOracle.InvalidNAV.selector);
+        repoDvP.getCollateralPrice();
+    }
+
+    function test_GetCollateralPrice_IgnoresAge() public {
+        // RepoDvP applies no staleness limit: an old NAV is still the price.
+        vm.warp(block.timestamp + 365 days);
+        assertEq(repoDvP.getCollateralPrice(), uint256(INITIAL_BOND_PRICE));
     }
 
     /* ============ State guards and margin views ============ */

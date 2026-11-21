@@ -61,8 +61,6 @@ interface IRepoDvP {
     /* ============ Custom Errors ============ */
 
     error ZeroPriceOracle();
-    error ZeroMaxPriceAge();
-    error StalePrice(uint256 updatedAt, uint256 currentTimestamp);
     error ZeroCollateralToken();
     error ZeroCashToken();
     error ZeroAmount();
@@ -97,8 +95,8 @@ interface IRepoDvP {
     ) external returns (uint256 repoId);
 
     /// @notice Accepts an on-chain proposal and executes Atomic DvP (Opening Leg).
-    /// @dev    Callable only by the lender and only until `acceptDeadline`. Pulls exactly the
-    ///         `getRequiredCollateralAmount` at the current price; reverts with `CollateralAboveCap` if that
+    /// @dev    Callable only by the lender and only until `acceptDeadline`. Pulls initial collateral sized
+    ///         from `initialMarginBps` at the current oracle price; reverts with `CollateralAboveCap` if that
     ///         exceeds the borrower's `maxCollateralAmount`.
     function acceptRepo(uint256 repoId) external;
 
@@ -112,8 +110,13 @@ interface IRepoDvP {
     function topUpCollateral(uint256 repoId, uint256 topUpAmount) external;
 
     /// @notice Close-out on post-maturity non-payment or missed margin cure: transfers to the lender
-    ///         collateral worth the repurchase price owed (at the live oracle price) and leaves any surplus
-    ///         claimable by the borrower. Reverts while the oracle is stale.
+    ///         collateral worth the repurchase price owed (at the live oracle price) and pushes any surplus
+    ///         back to the borrower in the same call.
+    /// @dev    POC design note: surplus is pushed directly rather than queued in a pull-claim mapping to keep
+    ///         escrow accounting minimal (`invariant_EscrowSolvency`). Because `collateralToken` is an ERC-3643
+    ///         token, if a defaulting borrower's address is frozen or de-verified, the push transfer of
+    ///         `surplusCollateral > 0` would revert until Compliance either unfreezes the borrower for close-out
+    ///         or a production deployment separates surplus into a pull-claim / quarantine balance.
     function claimDefault(uint256 repoId) external;
 
     /// @notice Cancels an unaccepted proposal.
@@ -124,18 +127,23 @@ interface IRepoDvP {
     /// @notice borrowAmount + interest accrued so far.
     function getCurrentRepurchasePrice(uint256 repoId) external view returns (uint256);
     /// @notice Actual/360 interest accrued since opening: borrowAmount × repoRateBps × elapsed / (360 days × 10_000),
-    ///         rounded down. Reverts unless the repo is Active or MarginCalled.
+    ///         rounded down. Returns 0 unless the repo is Active or MarginCalled.
     function getRepoInterest(uint256 repoId) external view returns (uint256 interest);
 
-    /// @notice Current collateral price from the oracle (8 decimals). Reverts on a stale or non-positive price.
+    /// @notice Current collateral price from the oracle (8 decimals). Reverts with `InhNAVOracle.InvalidNAV`
+    ///         on a zero or negative price.
     function getCollateralPrice() external view returns (uint256 price);
 
+    /// @notice Current mark-to-market value of a repo's escrowed collateral in EUR (18 decimals).
     function getCollateralValue(uint256 repoId) external view returns (uint256 collateralValueEUR);
 
+    /// @notice Minimum collateral value in EUR (18 decimals) required to satisfy `maintenanceMarginBps`.
     function getRequiredCollateralValue(uint256 repoId) external view returns (uint256);
 
+    /// @notice Minimum collateral token units (18 decimals) required to satisfy `maintenanceMarginBps` at the current price.
     function getRequiredCollateralAmount(uint256 repoId) external view returns (uint256);
 
+    /// @notice Returns true when `getCollateralValue(repoId) >= getRequiredCollateralValue(repoId)`.
     function isMarginHealthy(uint256 repoId) external view returns (bool);
 
     function repoCount() external view returns (uint256);

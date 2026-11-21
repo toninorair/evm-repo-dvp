@@ -212,8 +212,8 @@ function NavControl() {
     <div className="panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <div className="row" style={{ alignItems: 'baseline' }}>
         <h3>Oracle · Calculation Agent</h3>
-        <span className="small" style={{ color: o.stale ? 'var(--bad)' : 'var(--ok)' }}>
-          {o.stale ? 'Stale' : 'Live'}
+        <span className="small" style={{ color: o.invalid ? 'var(--bad)' : 'var(--ok)' }}>
+          {o.invalid ? 'No NAV' : 'Live'}
         </span>
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingBottom: 14, borderBottom: '1px solid var(--line)' }}>
@@ -224,7 +224,7 @@ function NavControl() {
           </span>
           <span className="muted">per nhBOND</span>
         </span>
-        <span className="small" style={{ color: o.stale ? 'var(--bad)' : 'var(--muted)' }}>
+        <span className="small" style={{ color: o.invalid ? 'var(--bad)' : 'var(--muted)' }}>
           Updated {o.updatedAt ? ago(now - o.updatedAt) : 'never'}
         </span>
       </div>
@@ -237,7 +237,7 @@ function NavControl() {
       <div className="field">
         <label htmlFor="nav">New NAV · EUR per nhBOND</label>
         <input id="nav" inputMode="decimal" value={input} onChange={(e) => setInput(e.target.value)} />
-        <span className="hint">{move === 0 ? 'Re-posting the same NAV refreshes staleness.' : `${move > 0 ? '+' : '−'}${Math.abs(move)} bps vs current`}</span>
+        <span className="hint">{move === 0 ? 'Same as the current NAV.' : `${move > 0 ? '+' : '−'}${Math.abs(move)} bps vs current`}</span>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
         {[-500, -200, -100, 100, 200, 500].map((b) => (

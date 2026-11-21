@@ -30,14 +30,14 @@ export type Deployment = {
   bondRegistry: Address
   /** Registry nhEUR enforces; usually the same address as bondRegistry. */
   cashRegistry: Address
-  maxPriceAge: number
 }
 
 export type OracleSnapshot = {
   price: bigint // 8 decimals
   roundId: bigint
   updatedAt: number
-  stale: boolean
+  /** No positive NAV posted, so RepoDvP can't price collateral. RepoDvP applies no age limit. */
+  invalid: boolean
   description: string
   previousPrice?: bigint
 }
@@ -170,7 +170,6 @@ const revertCopy: Record<string, string> = {
   CurePeriodInvalid: 'Cure period must be between 1 second and the term.',
   AcceptDeadlineInvalid: 'The acceptance deadline must be in the future.',
   ZeroAmount: 'Amounts must be greater than zero.',
-  StalePrice: 'The NAV oracle is stale. The calculation agent must post a new NAV.',
   InvalidNAV: 'The NAV oracle returned an invalid price.',
   AccountIsFrozen: 'An nhEUR account involved is frozen.',
   EnforcedPause: 'nhEUR transfers are paused.',
@@ -365,14 +364,9 @@ class Backend {
     if (!repoDvP) throw new Error('VITE_REPO_DVP is not set. Copy app/.env.example to app/.env and add the RepoDvP address.')
     const code = await this.client.getCode({ address: repoDvP })
     if (!code || code === '0x') throw new Error(`No contract at ${repoDvP} on ${networkName}. Check VITE_REPO_DVP.`)
-    const read = (functionName: 'cashToken' | 'collateralToken' | 'collateralOracle' | 'maxPriceAge') =>
+    const read = (functionName: 'cashToken' | 'collateralToken' | 'collateralOracle') =>
       this.client.readContract({ address: repoDvP!, abi: repoDvpAbi, functionName })
-    const [cashToken, collateralToken, oracle, maxPriceAge] = await Promise.all([
-      read('cashToken'),
-      read('collateralToken'),
-      read('collateralOracle'),
-      read('maxPriceAge'),
-    ])
+    const [cashToken, collateralToken, oracle] = await Promise.all([read('cashToken'), read('collateralToken'), read('collateralOracle')])
     // RepoDvP reads each token's registry live, so mirror that rather than caching one registry.
     const [bondRegistry, cashRegistry] = await Promise.all([
       this.client.readContract({ address: collateralToken as Address, abi: bondTokenAbi, functionName: 'identityRegistry' }),
@@ -385,7 +379,6 @@ class Backend {
       oracle: oracle as Address,
       bondRegistry: bondRegistry as Address,
       cashRegistry: cashRegistry as Address,
-      maxPriceAge: Number(maxPriceAge),
     }
     return this.deployment
   }
@@ -423,7 +416,7 @@ class Backend {
 
     const repos: Repo[] = ids.map((id, i) => {
       const [borrower, lender, borrowAmount, repoRateBps, initialMarginBps, maintenanceMarginBps, termSeconds, curePeriodSeconds, acceptDeadline, maxCollateralAmount] = orders[i]
-      const [status, startTime, maturity, collateralAmount, cureDeadline] = states[i]
+      const [status, collateralAmount, startTime, maturity, cureDeadline] = states[i]
       return {
         id,
         order: { borrower, lender, borrowAmount, repoRateBps, initialMarginBps, maintenanceMarginBps, termSeconds, curePeriodSeconds, acceptDeadline, maxCollateralAmount },
@@ -440,7 +433,7 @@ class Backend {
         price: answer > 0n ? answer : 0n,
         roundId,
         updatedAt: Number(updatedAt),
-        stale: answer <= 0n || chainTime - Number(updatedAt) > d.maxPriceAge,
+        invalid: answer <= 0n,
         description,
         previousPrice: this.navHistory.length > 1 ? this.navHistory[this.navHistory.length - 2] : undefined,
       },

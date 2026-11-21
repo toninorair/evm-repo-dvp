@@ -81,7 +81,6 @@ export function Book() {
   const { oracle } = view
   const move = oracle.previousPrice ? Number(((oracle.price - oracle.previousPrice) * 10_000n) / oracle.previousPrice) : undefined
   const age = now - oracle.updatedAt
-  const maxAge = snapshot!.deployment.maxPriceAge
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
@@ -224,9 +223,9 @@ export function Book() {
           <div className="panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
             <div className="row" style={{ alignItems: 'baseline' }}>
               <h3>Collateral Oracle</h3>
-              <span className="small" style={{ color: oracle.stale ? 'var(--bad)' : 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
-                {!oracle.stale && <span className="pulse-dot" aria-hidden="true" />}
-                {oracle.stale ? 'Stale' : 'Live'}
+              <span className="small" style={{ color: oracle.invalid ? 'var(--bad)' : 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                {!oracle.invalid && <span className="pulse-dot" aria-hidden="true" />}
+                {oracle.invalid ? 'No NAV' : 'Live'}
               </span>
             </div>
             <div className="small muted">nhNAVOracle · {oracle.description}</div>
@@ -239,7 +238,6 @@ export function Book() {
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, fontSize: 12 }}>
               {[
                 ['Last update', oracle.updatedAt ? `${time(oracle.updatedAt)} · ${ago(age)}` : '—'],
-                ['Max age · RepoDvP', `${duration(maxAge)} · ${oracle.stale ? 'exceeded' : `${duration(Math.max(0, maxAge - age))} left`}`],
                 ['Change vs previous', move === undefined ? '—' : `${move > 0 ? '+' : move < 0 ? '−' : ''}${Math.abs(move)} bps`],
                 ['Round', String(oracle.roundId)],
               ].map(([k, v]) => (
@@ -249,7 +247,7 @@ export function Book() {
                 </div>
               ))}
             </div>
-            {oracle.stale && <p className="small" style={{ margin: 0, color: 'var(--bad)' }}>Accepting, margin calls and defaults revert until the calculation agent posts a fresh NAV (My desk → Oracle).</p>}
+            {oracle.invalid && <p className="small" style={{ margin: 0, color: 'var(--bad)' }}>No valid NAV: accepting, margin calls, top-ups and defaults revert until the calculation agent posts one (Market tab).</p>}
           </div>
 
           <div>

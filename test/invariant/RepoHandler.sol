@@ -94,7 +94,7 @@ contract RepoHandler is Test {
 
     /// @dev Reads a repo's state from the public `states` mapping getter.
     function _getState(uint256 repoId) internal view returns (RepoDvP.RepoState memory s) {
-        (s.status, s.startTime, s.maturity, s.collateralAmount, s.cureDeadline) = repoDvP.states(repoId);
+        (s.status, s.collateralAmount, s.startTime, s.maturity, s.cureDeadline) = repoDvP.states(repoId);
     }
 
     /// @dev Reads a repo's terms from the public `orders` mapping getter.

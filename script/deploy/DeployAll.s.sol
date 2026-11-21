@@ -18,11 +18,10 @@ import { DeskOnboarding } from "./OnboardDesk.s.sol";
 /// @author Ethereum Institutional / Nordhaven Bank
 contract DeployAll is DeskOnboarding, TREXSuiteDeployment {
     int256 internal constant INITIAL_BOND_PRICE = 100_00000000; // €100.00 par (8 decimals)
-    uint256 internal constant MAX_PRICE_AGE = 4 days; // matches the NAV oracle's daily update cadence with slack
     uint256 internal constant INITIAL_DEMO_CASH = 50_000_000 ether; // €50M demo liquidity
     uint256 internal constant INITIAL_DEMO_BONDS = 500_000 ether; // 500k bonds (€50M par)
-    uint256 internal constant DESK_BONDS = 100_000 ether; // borrower desk: €10M of collateral at par
-    uint256 internal constant DESK_CASH = 10_000_000 ether; // each desk: €10M nhEUR (lender funds, borrower repays)
+    uint256 internal constant DESK_BONDS = 250_000 ether; // borrower desk: €25M of collateral at par
+    uint256 internal constant DESK_CASH = 25_000_000 ether; // each desk: €25M nhEUR (lender funds, borrower repays)
 
     function run() external returns (nhNAVOracle oracle, nhEUR cashToken, InhBOND bondToken, RepoDvP repoDvP) {
         uint256 deployerPrivateKey = vm.envOr(
@@ -62,7 +61,7 @@ contract DeployAll is DeskOnboarding, TREXSuiteDeployment {
         console2.log("nhBOND NAV (Collateral Leg) deployed at:", address(bondToken));
 
         // 5. Deploy RepoDvP Settlement & Escrow Engine
-        repoDvP = new RepoDvP(address(oracle), MAX_PRICE_AGE, address(bondToken), address(cashToken));
+        repoDvP = new RepoDvP(address(oracle), address(bondToken), address(cashToken));
         console2.log("RepoDvP (Settlement Engine) deployed at:", address(repoDvP));
 
         // 6. Configure ONCHAINID Registrations
@@ -88,6 +87,8 @@ contract DeployAll is DeskOnboarding, TREXSuiteDeployment {
         console2.log("Settlement console (app/.env):");
         console2.log("  VITE_REPO_DVP=", address(repoDvP));
         console2.log("  VITE_DEPLOY_BLOCK=", block.number);
+        console2.log("Verify nhBOND (if skipped by --verify due to 0.8.17 deployCode):");
+        console2.log("  forge verify-contract", address(bondToken), "src/nhBOND.sol:nhBOND --chain-id", block.chainid);
         console2.log("=================================================");
     }
 }

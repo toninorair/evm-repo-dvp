@@ -15,15 +15,15 @@ forge script script/deploy/DeployAll.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcas
 
 | Desk     | nhBOND  | nhEUR                          |
 | -------- | ------- | ------------------------------ |
-| Borrower | 100,000 | 10,000,000 (to repay interest) |
-| Lender   | 0       | 10,000,000                     |
+| Borrower | 250,000 | 25,000,000 (to repay interest) |
+| Lender   | 0       | 25,000,000                     |
 
 The deployer wallet is the NAV calculation agent. Every wallet also needs Sepolia ETH for gas.
 
 To add another wallet later, use the console's **Identity** tab with the deployer wallet, or:
 
 ```bash
-REPO_DVP=0x… DESK=0x… BONDS=100000 CASH=10000000 \
+REPO_DVP=0x… DESK=0x… BONDS=250000 CASH=25000000 \
 forge script script/deploy/OnboardDesk.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast
 ```
 
@@ -95,7 +95,7 @@ Each tab's **Wallet** page shows that wallet's identity status, balances, frozen
   - interest = principal × rate × elapsed ÷ 311,040,000,000, accruing past maturity until settled;
   - opening collateral = ⌈principal × (1 + initial margin) ÷ NAV⌉;
   - maintenance requirement = repurchase price × (1 + maintenance margin).
-- **Pre-flight simulation.** Every write is simulated first. A doomed transaction shows the decoded reason, for example `CollateralAboveCap` or `StalePrice`, and the wallet never opens.
+- **Pre-flight simulation.** Every write is simulated first. A doomed transaction shows the decoded reason, for example `CollateralAboveCap` or `MarginSufficient`, and the wallet never opens.
 - **Approvals.**
   - The borrower's nhBOND approval covers the caps of all of their open proposals, because `acceptRepo()` pulls from that single allowance.
   - The settlement approval covers an extra hour of interest, so accrual between the click and the block can't make it fail.

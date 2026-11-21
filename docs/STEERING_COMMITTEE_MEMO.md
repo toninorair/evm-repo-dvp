@@ -26,31 +26,34 @@ We recommend **Go with Conditions**, proceeding to a gated institutional pilot.
 ├─────────────────────┬─────────────────────────────────────┬────────────────────────────┤
 │ PILLAR              │ REGULATORY / TECHNICAL ANALYSIS     │ NORDHAVEN POSITION         │
 ├─────────────────────┼─────────────────────────────────────┼────────────────────────────┤
-│ 1. Legal Settlement │ EU Financial Collateral Directive   │ Enforceable title transfer │
-│    Finality         │ (2002/47/EC) & GMRA 2011 Annex      │ via Escrow Dispossession   │
+│ 1. Legal Settlement │ EU Financial Collateral Directive   │ Enforceable escrow control │
+│    Finality         │ (2002/47/EC), SFD & GMRA 2011 Annex │ & close-out netting        │
 ├─────────────────────┼─────────────────────────────────────┼────────────────────────────┤
 │ 2. Cash Leg         │ Tokenised Commercial Bank Deposits  │ Zero MiCA stablecoin drag; │
 │    Classification   │ (J.P. Morgan JPM Coin Model)        │ direct deposit liability   │
 ├─────────────────────┼─────────────────────────────────────┼────────────────────────────┤
-│ 3. Privacy on       │ Private RPCs, Flashbots Protect,    │ Mitigates front-running &  │
-│    Public Ethereum  │ and Confidential ZK Roadmap         │ market signaling risk      │
+│ 3. Privacy on       │ Private RPCs, Flashbots Protect,    │ Mitigates mempool MEV; L2  │
+│    Public Ethereum  │ and Confidential ZK L2 Roadmap      │ required for post-trade ZK │
 └─────────────────────┴─────────────────────────────────────┴────────────────────────────┘
 ```
 
-### Pillar 1: Legal Settlement Finality under EU Framework
-- **EU Financial Collateral Directive (Directive 2002/47/EC - FCD):** The FCD provides safe harbor protections against insolvency clawback for title transfer financial collateral arrangements. The key legal requirement is *possession or control* of the collateral. In our smart contract architecture, `nhBOND NAV` tokens are locked into the autonomous `RepoDvP` escrow contract upon trade acceptance. This satisfies the "dispossession of the pledgor" test under European private law.
-- **Contractual Enforceability:** We recommend executing all on-chain trades under the **ICMA Global Master Repurchase Agreement (GMRA 2011)** supplemented by the **GMRA Digital Assets Annex**, legally binding on-chain cryptographic signatures (EIP-712) to traditional master confirmation records.
+### Pillar 1: Legal Enforceability & Settlement Finality
+
+- **The Risk:** Under the **EU Financial Collateral Directive (Directive 2002/47/EC - FCD)** and the **Settlement Finality Directive (98/26/EC - SFD)**, an insolvency administrator could challenge on-chain collateral enforcement if locking tokens in a smart contract is not recognized as legally valid "possession or control," or because public Ethereum lacks a designated SFD system operator and relies on epoch-based finality (~12.8 minutes).
+- **Our Architecture:** Upon `acceptRepo()`, `nhBOND NAV` tokens are locked in the autonomous `RepoDvP` escrow contract (dispossessing the borrower of unilateral control, equivalent to a tri-party **Security Financial Collateral Arrangement**), and `claimDefault()` enforces **close-out netting** (seizing only collateral worth `amountOwed` and returning `surplusCollateral` to the borrower).
+- **What Must Be True to Proceed:** Counterparties must execute the **ICMA GMRA 2011** supplemented by the **GMRA Digital Assets Annex** (explicitly defining the Ethereum finalized block epoch as legal settlement finality and binding `proposeRepo` / `acceptRepo` to master confirmations), backed by an external legal opinion confirming FCD dispossession and close-out netting enforceability under German and French law.
 
 ### Pillar 2: Cash Leg Classification (Tokenised Deposit vs. Stablecoin vs. wCBDC)
-- **Tokenised Commercial Bank Deposit (`nhEUR`):** We have chosen the **J.P. Morgan JPM Coin (`JPMD`)** architectural model. Unlike MiCA-regulated E-Money Tokens (EMTs) or asset-referenced tokens (which introduce reserve asset credit risk and stablecoin issuer constraints), `nhEUR` represents a direct, fractional, 1:1 book-entry claim on Nordhaven Bank’s commercial deposits.
-- **Wholesale Central Bank Money (wCBDC) Interoperability:** The prototype's standard `IERC20` interface is designed to seamlessly swap to ECB Eurosystem wholesale settlement trial tokens (e.g., CeBM Trigger Solution or TIPS hash-link) as central bank digital money becomes available.
 
-### Pillar 3: Public Ethereum vs. Private Permissioned Ledgers & Transaction Privacy
-- **Why Public Ethereum:** Private consortium chains (e.g., Canton, Corda) suffer from counterparty fragmentation, proprietary vendor lock-in, and illiquid silos. Public Ethereum provides universal composability, non-custodial neutral infrastructure, and unmatched institutional liquidity.
-- **Privacy Protections Implemented Today:**
-  1. *Counterparty Separation:* Trading desks operate pseudonymous, institutional-whitelisted addresses separated from public treasury accounts.
-  2. *Zero-Mempool Exposure:* Transactions are routed exclusively via private RPC relays (e.g., **Flashbots Protect / MEV-Share**), ensuring orders bypass the public mempool and cannot be front-run or sandwich-attacked by MEV searchers.
-- **Long-Term Privacy Roadmap:** For full institutional confidentiality (concealing notional trade sizes and counterparties from public chain analysis), Nordhaven will transition production settlement to an **Ethereum Layer-2 Confidential Validium / ZK-Rollup** utilizing zero-knowledge state transitions.
+- **The Risk:** Settling interbank sovereign repo in a third-party MiCA E-Money Token (EMT) stablecoin exposes Nordhaven to private stablecoin issuer credit risk, violates **CPMI-IOSCO PFMI Principle 9**, and disqualifies the cash leg from Level 1 HQLA treatment under CRR/Basel III. Conversely, a single-bank deposit token (`nhEUR`) introduces bilateral Nordhaven credit exposure for external bank lenders until wholesale Central Bank Money (wCBDC) is live 24/7.
+- **Our Architecture:** We modeled `nhEUR` on **J.P. Morgan’s JPM Coin (`JPMD`)**—a permissioned 1:1 commercial bank deposit liability gated by the ERC-3643 `IdentityRegistry` and minted/burned strictly against RTGS/TARGET2 fiat references (`TREASURY_ROLE`).
+- **What Must Be True to Proceed:** Phase 1 pilot trading must operate between Nordhaven entities and institutional clients/dealers maintaining Nordhaven correspondent deposit accounts (with capped bilateral exposure limits), while keeping the standard `IERC20` cash interface ready to plug into ECB Eurosystem wholesale DLT settlement rails (Trigger Solution / wCBDC) or multi-bank shared deposit networks (BIS Project Agorá).
+
+### Pillar 3: Privacy on a Public Chain & Capital Treatment
+
+- **The Risk:** While routing transactions through private RPC relays (**Flashbots Protect**) prevents pre-trade mempool front-running, **every mined transaction on public Ethereum L1 permanently exposes trade notionals, repo rates, maturities, and pseudonymous desk addresses on-chain**, risking market signaling of Nordhaven’s funding needs. Additionally, under **Basel III SCO60**, assets on permissionless chains risk punitive Group 2 capital charges unless Group 1b regulatory treatment is confirmed.
+- **Our Architecture:** Counterparty wallets are separated from treasury accounts and gated by ERC-3643 `ONCHAINID` verification, keeping identity attributes off-chain while transactions route via private RPCs during the testnet and capped Phase 1 pilot.
+- **What Must Be True to Proceed:** Phase 1 gross notional must be strictly capped (€250M) under regulatory sandbox notification (BaFin / CSSF), and full commercial scale must migrate the identical EVM contracts to an **Ethereum Layer-2 Confidential Validium / ZK-Rollup** that encrypts post-trade notionals and rates while anchoring state roots to Ethereum Mainnet.
 
 ---
 

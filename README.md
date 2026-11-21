@@ -17,7 +17,7 @@ This repository delivers a testnet-ready, production-grade Proof of Concept (POC
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        Institutional Trading Layer                     │
-│  - Desk A (Borrower): Signs off-chain EIP-712 Order / On-chain Propose │
+│  - Desk A (Borrower): Proposes repo terms on-chain (`proposeRepo`)     │
 │  - Desk B (Lender):   Accepts trade & triggers atomic settlement       │
 └───────────────────────────────────┬────────────────────────────────────┘
                                     │
@@ -26,7 +26,7 @@ This repository delivers a testnet-ready, production-grade Proof of Concept (POC
 │                     RepoDvP Settlement Engine                          │
 │                                                                        │
 │  1. Opening Leg (DvP):                                                 │
-│     - nhBOND Collateral  ──> Pulled from Borrower into Escrow          │
+│     - nhBOND Collateral  ──> Sized at live NAV & pulled into Escrow    │
 │     - nhEUR Cash         ──> Transferred directly Lender -> Borrower   │
 │     [Single transaction execution: both legs settle or tx reverts]     │
 │                                                                        │
@@ -39,17 +39,18 @@ This repository delivers a testnet-ready, production-grade Proof of Concept (POC
 │     - Repayment Cash     ──> Transferred Borrower -> Lender            │
 │     - nhBOND Collateral  ──> Released from Escrow back to Borrower     │
 │                                                                        │
-│  4. Default Resolution:                                                │
+│  4. Default Resolution (Close-Out Netting):                            │
 │     - Missed maturity or missed margin cure ──> Lender seizes bond     │
+│       worth amount owed; surplus collateral returned to Borrower       │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### Institutional Design Choices:
 
 - **Collateral Leg (`nhBOND NAV`):** Built strictly on the official **ERC-3643 (T-REX)** token standard (`IERC3643`), representing European sovereign bond fund units valued at Net Asset Value (NAV). Enforces on-chain identity verification (`IdentityRegistry` / `ONCHAINID`), modular transfer rules (`ModularCompliance`), partial/wallet freezing, and regulatory forced transfers.
-- **Cash Leg (`nhEUR`):** Structured as an institutional **Tokenised Commercial Bank Deposit** strictly modeled after **J.P. Morgan's JPM Coin (`JPMD`)** (deployed at `0xb2906cCED1b2c8330480414CeFA1eb52bDBd73A3` on Ethereum Mainnet). Incorporates a 4-tier banking control model and EIP-2612 gasless permits for 1-transaction atomic DvP settlement.
-- **Real Fund NAV Oracle (`nhNAVOracle`):** Modeled after institutional tokenized money market funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink's `AggregatorV3Interface` with calculation agent attestations. Staleness is enforced by the consumer: `RepoDvP` rejects prices older than `maxPriceAge`.
-- **Settlement & Escrow (`RepoDvP`):** Functions as an automated decentralized **Tri-Party Collateral Agent** under the EU Financial Collateral Directive (Directive 2002/47/EC), eliminating counterparty rehypothecation and settlement failure risk.
+- **Cash Leg (`nhEUR`):** Structured as an institutional **Tokenised Commercial Bank Deposit** modeled after **J.P. Morgan's JPM Coin (`JPMD`)** (deployed at `0xb2906cCED1b2c8330480414CeFA1eb52bDBd73A3` on Ethereum Mainnet). Incorporates role-based banking controls (`TREASURY_ROLE`, `COMPLIANCE_ROLE`), shared ERC-3643 `IdentityRegistry` checks, account freeze/pause guardrails, and EIP-2612 permit support.
+- **Minimal Fund NAV Oracle (`nhNAVOracle`):** Modeled after institutional tokenised money market and bond funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink's `AggregatorV3Interface` with calculation agent attestations and `updatedAt` round timestamps while keeping the POC oracle intentionally simple (no on-chain staleness cutoff).
+- **Settlement & Escrow (`RepoDvP`):** Functions as an automated decentralized **Tri-Party Collateral Agent** under the EU Financial Collateral Directive (Directive 2002/47/EC), eliminating counterparty rehypothecation and settlement failure risk, with GMRA-aligned close-out netting on default.
 
 ---
 
@@ -75,7 +76,6 @@ evm-dvp-repo/
 │       ├── IIdentityRegistry.sol         # isVerified() + token identityRegistry() views (DvP reads each leg's registry live)
 │       ├── InhNAVOracle.sol
 │       ├── IRepoDvP.sol
-│       ├── IRepoTypes.sol
 │       ├── InhBOND.sol
 │       └── InhEUR.sol
 ├── test/
@@ -85,11 +85,11 @@ evm-dvp-repo/
 │   │   └── ...
 │   ├── unit/
 │   │   ├── ComplianceAndTokens.t.sol     # ERC-3643 verification, partial freeze, recovery, oracle
-│   │   └── RepoDvP.t.sol                 # Atomic DvP, RvP, EIP-712 orders, open RFQ
+│   │   └── RepoDvP.t.sol                 # Atomic DvP, RvP, dynamic collateral sizing, registry checks
 │   ├── integration/
-│   │   └── MarginAndDefault.t.sol        # Price drops, margin calls, top-up, default seizure
+│   │   └── MarginAndDefault.t.sol        # Price drops, margin calls, top-up, close-out netting
 │   ├── fuzz/
-│   │   └── RepoFuzz.t.sol                # Actual/360 interest & margin ratio fuzzing (10,000 runs)
+│   │   └── RepoFuzz.t.sol                # Actual/360 interest & collateral sizing fuzzing (5,000 runs)
 │   ├── invariant/
 │   │   ├── RepoInvariant.t.sol           # Continuous contract solvency & zero trapped cash
 │   │   └── RepoHandler.sol               # Invariant campaign action wrapper
@@ -132,37 +132,12 @@ forge test
 Expected output:
 
 ```
-Ran 5 test suites: 24 tests passed, 0 failed, 0 skipped
-- test_ERC3643_IdentityGating_RevertsIfNotVerified (PASS)
-- test_ERC3643_PartialFreezing (PASS)
-- test_ERC3643_AddressFreezing (PASS)
-- test_ERC3643_BatchOperations (PASS)
-- test_ERC3643_RecoveryAddress (PASS)
-- test_nhNAVOracle_LifecycleAndGuards (PASS)
-- test_AtomicDvP_OpeningLeg (PASS)
-- test_ClosingLeg_RvP_Settlement_AtMaturity (PASS)
-- test_ProposeRepo_And_Cancel (PASS)
-- test_ProposeRepo_RevertsOnZeroLender (PASS)
-- test_ProposeRepo_RevertsWhenBorrowerIsLender (PASS)
-- test_MarginCall_Trigger_And_TopUp_Cure (PASS)
-- test_Default_MissedMaturity (PASS)
-- test_Default_MissedMarginCure (PASS)
-- testFuzz_Actual360InterestAccrual (PASS - 5,000 runs)
-- testFuzz_CollateralValuation (PASS - 5,000 runs)
-- invariant_EscrowSolvency (PASS - 512 runs, 12,800 calls)
-- invariant_ZeroTrappedCash (PASS - 512 runs, 12,800 calls)
-- test_AtomicDvP_OpeningLeg (PASS)
-- test_ClosingLeg_RvP_Settlement_AtMaturity (PASS)
-- test_ProposeRepo_And_Cancel (PASS)
-- test_ProposeRepo_RevertsOnZeroLender (PASS)
-- test_ProposeRepo_RevertsWhenBorrowerIsLender (PASS)
-- test_MarginCall_Trigger_And_TopUp_Cure (PASS)
-- test_Default_MissedMaturity (PASS)
-- test_Default_MissedMarginCure (PASS)
-- testFuzz_Actual360InterestAccrual (PASS - 5,000 runs)
-- testFuzz_CollateralValuation (PASS - 5,000 runs)
-- invariant_EscrowSolvency (PASS - 512 runs, 12,800 calls)
-- invariant_ZeroTrappedCash (PASS - 512 runs, 12,800 calls)
+Ran 5 test suites: 50 tests passed, 0 failed, 0 skipped
+- ComplianceAndTokensTest (14 passed): ERC-3643 identity gating, partial/address freezing, forced transfer, recovery, nhEUR & nhNAVOracle guards
+- RepoDvPTest (25 passed): Atomic DvP opening leg, dynamic collateral sizing & cap guards, Actual/360 interest, RvP closing leg, live registry checks
+- MarginAndDefaultTest (8 passed): MTM margin calls, top-up cure, missed maturity & missed margin cure default close-out netting, surplus return
+- RepoFuzzTest (2 passed - 5,000 runs each): testFuzz_Actual360InterestAccrual, testFuzz_CollateralSizing
+- RepoInvariantTest (1 passed - 512 runs, 12,800 calls): invariant_EscrowSolvency, invariant_ZeroTrappedCash
 ```
 
 ---
@@ -182,10 +157,11 @@ Set your Sepolia credentials in `.env`:
 ```ini
 SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
 ETHERSCAN_API_KEY=YOUR_ETHERSCAN_API_KEY
+SEPOLIA_VERIFIER_URL=https://api-sepolia.etherscan.io/api
 PRIVATE_KEY=YOUR_SEPOLIA_TESTNET_PRIVATE_KEY
 # Optional: wallets to register in the identity registry and fund for the settlement console
-BORROWER_ADDRESS=0x…   # gets 100,000 nhBOND and 10,000,000 nhEUR
-LENDER_ADDRESS=0x…     # gets 10,000,000 nhEUR
+BORROWER_ADDRESS=0x…   # gets 250,000 nhBOND and 25,000,000 nhEUR
+LENDER_ADDRESS=0x…     # gets 25,000,000 nhEUR
 ```
 
 Onboard more desks later with `REPO_DVP=0x… DESK=0x… forge script script/deploy/OnboardDesk.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast`.
@@ -209,13 +185,13 @@ forge script script/deploy/DeployAll.s.sol \
 
 ### Standalone Etherscan Verification Fallback
 
-If Etherscan’s API experiences delays during broadcast, verify manually:
+> **Note on `nhBOND` (`solc 0.8.17`):** Because `TREXSuiteDeployment` deploys `nhBOND` via `deployCode("nhBOND.sol:nhBOND")` to bridge `solc 0.8.17` (ERC-3643) and `solc 0.8.34` without exceeding the 24 KB EIP-170 contract size limit, `forge script --verify` automatically verifies `RepoDvP`, `nhEUR`, and `nhNAVOracle`, and may skip raw `deployCode` creations. If `nhBOND` is skipped—or if Etherscan’s API experiences delays during broadcast—run the standalone verification command (also printed at the end of `DeployAll`):
 
 ```bash
 # Verify RepoDvP
 forge verify-contract <REPO_DVP_ADDRESS> src/RepoDvP.sol:RepoDvP \
   --chain-id 11155111 \
-  --constructor-args $(cast abi-encode "constructor(address,address,uint256,address,address)" $IDENTITY_REGISTRY $ORACLE 345600 $NH_BOND $NH_EUR) \
+  --constructor-args $(cast abi-encode "constructor(address,address,address)" $ORACLE $NH_BOND $NH_EUR) \
   --etherscan-api-key $ETHERSCAN_API_KEY
 
 # Verify nhEUR
@@ -227,7 +203,7 @@ forge verify-contract <NH_EUR_ADDRESS> src/nhEUR.sol:nhEUR \
 # Verify nhNAVOracle
 forge verify-contract <ORACLE_ADDRESS> src/nhNAVOracle.sol:nhNAVOracle \
   --chain-id 11155111 \
-  --constructor-args $(cast abi-encode "constructor(address,address,int256,uint256,uint256)" $ADMIN $CALC_AGENT 10000000000 86400 50) \
+  --constructor-args $(cast abi-encode "constructor(address,address)" $ADMIN $CALC_AGENT) \
   --etherscan-api-key $ETHERSCAN_API_KEY
 
 # Verify nhBOND NAV (Official ERC-3643 / T-REX Security Token)
@@ -242,10 +218,10 @@ forge verify-contract <NH_BOND_ADDRESS> src/nhBOND.sol:nhBOND \
 
 ### Scenario A: The Happy Path (Atomic DvP & RvP)
 
-1. **Trade Agreement:** Bank A (Borrower) pledges 105,000 `nhBOND` (€10.5M par) to borrow €10,000,000 `nhEUR` at 3.50% repo rate for 7 days (margin ratio: 2%).
+1. **Trade Proposal:** Bank A (Borrower) calls `proposeRepo()` to borrow €10,000,000 `nhEUR` from Bank B (Lender) at a 3.50% repo rate for 7 days (2% initial margin, 1% maintenance margin, 2-hour cure period, capped at 103,000 `nhBOND`).
 2. **Opening Leg (DvP):**
-   - Call `repoDvP.acceptRepo(repoId)`.
-   - Collateral transfers atomically into escrow; cash transfers to borrower.
+   - Lender calls `repoDvP.acceptRepo(repoId)`.
+   - Contract sizes collateral at the €100.00 live NAV (102,000 `nhBOND` = €10.2M) and atomically pulls `nhBOND` into escrow while transferring €10,000,000 `nhEUR` directly to the borrower.
    - Bank back office captures `RepoOpened` event.
 3. **Closing Leg (RvP):**
    - At maturity, borrower calls `repoDvP.settleRepo(repoId)`.
@@ -255,19 +231,19 @@ forge verify-contract <NH_BOND_ADDRESS> src/nhBOND.sol:nhBOND \
 
 ### Scenario B: Dynamic Mark-to-Market Margin Call
 
-1. Market yield rises; sovereign bond price drops from €100.00 to €92.00 in the oracle.
-2. Collateral value falls to €9.66M, breaching the 101% maintenance margin threshold.
+1. Market yield rises; sovereign bond price drops from €100.00 to €92.00 in the oracle (`updateNAV`).
+2. Collateral value falls to €9.384M (102,000 bonds × €92.00), breaching the 101% maintenance margin threshold.
 3. Anyone calls `repoDvP.marginCall(repoId)`:
    - Status changes to `MarginCalled`.
-   - Contract sets a 2-hour cure deadline and calculates the exact €440,000 collateral deficit.
-   - Bank risk system captures `MarginCalled` event.
+   - Contract sets a 2-hour `cureDeadline`.
+   - Bank risk system captures `MarginCalled(repoId, currentCollateralValue, cureDeadline)` event.
 4. Borrower calls `repoDvP.topUpCollateral(repoId, 10_000 ether)`.
-   - 10,000 additional bonds transferred to escrow.
-   - Trade returns to `Active`.
+   - 10,000 additional bonds transferred to escrow, restoring health above the maintenance requirement.
+   - Trade returns to `Active` and `cureDeadline` resets to `0`.
 
-### Scenario C: Default Close-Out Seizure
+### Scenario C: Default Close-Out Netting
 
-1. If the borrower fails to cure within 2 hours (or fails to repay at maturity):
+1. If the borrower fails to cure within 2 hours (or fails to repay by maturity):
 2. Lender calls `repoDvP.claimDefault(repoId)`.
-3. 100% of escrowed bonds are instantly seized and delivered to the lender.
-4. Contract emits `RepoDefaulted(repoId, lender, collateralSeized, "Margin Call Cure Expired")`.
+3. **Close-Out Netting:** The contract seizes collateral worth the exact repurchase price owed (`amountOwed`) at the live oracle price and returns any `surplusCollateral` to the borrower in the same transaction.
+4. Contract emits `RepoDefaulted(repoId, lender, amountOwed, collateralSeized, surplusCollateral, reason)`.

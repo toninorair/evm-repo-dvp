@@ -42,15 +42,15 @@ abstract contract DeskOnboarding is Script {
 
 /// @title  OnboardDesk
 /// @notice Onboards one more desk against an existing deployment.
-/// @dev    REPO_DVP=0x… DESK=0x… [BONDS=100000] [CASH=10000000] forge script script/deploy/OnboardDesk.s.sol --rpc-url sepolia --broadcast
+/// @dev    REPO_DVP=0x… DESK=0x… [BONDS=250000] [CASH=25000000] forge script script/deploy/OnboardDesk.s.sol --rpc-url sepolia --broadcast
 ///         BONDS and CASH are whole tokens.
 contract OnboardDesk is DeskOnboarding {
     function run() external {
         uint256 key = vm.envUint("PRIVATE_KEY");
         RepoDvP repoDvP = RepoDvP(vm.envAddress("REPO_DVP"));
         address desk = vm.envAddress("DESK");
-        uint256 bonds = vm.envOr("BONDS", uint256(100_000)) * 1e18;
-        uint256 cash = vm.envOr("CASH", uint256(10_000_000)) * 1e18;
+        uint256 bonds = vm.envOr("BONDS", uint256(250_000)) * 1e18;
+        uint256 cash = vm.envOr("CASH", uint256(25_000_000)) * 1e18;
 
         vm.startBroadcast(key);
         _onboard(repoDvP, desk, bonds, cash);

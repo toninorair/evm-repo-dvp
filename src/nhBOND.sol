@@ -27,6 +27,8 @@ contract nhBOND is Token, InhBOND {
     /* ============ Sovereign Bond Configuration ============ */
 
     /// @inheritdoc InhBOND
+    /// @dev POC simplification: kept re-callable by `onlyOwner` for testnet/demo reconfiguration; in production,
+    ///      static bond master data (`isin`, `maturityDate`, `couponRateBps`) would be locked at initialization.
     function setBondDetails(
         string calldata isin_,
         uint256 maturityDate_,

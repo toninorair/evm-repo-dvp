@@ -70,6 +70,9 @@ abstract contract TREXSuiteDeployment is Script {
         ITREXInit(suite.modularCompliance).init();
 
         // Token.init() binds the compliance module to the token itself.
+        // Note: deployed via deployCode() to bridge Solc 0.8.17 (T-REX) and 0.8.34 without exceeding the
+        // EIP-170 24 KB limit. If `forge script --verify` skips raw deployCode creations, verify nhBOND
+        // with: `forge verify-contract <NH_BOND> src/nhBOND.sol:nhBOND --chain-id 11155111`.
         suite.token = deployCode("nhBOND.sol:nhBOND");
         IBondTokenInit token = IBondTokenInit(suite.token);
         token.init(suite.identityRegistry, suite.modularCompliance, tokenName, tokenSymbol, 18, address(0));

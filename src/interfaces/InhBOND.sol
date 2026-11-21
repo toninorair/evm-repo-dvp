@@ -35,6 +35,9 @@ interface InhBOND {
     function redeem(address from, uint256 amount) external;
 
     /// @notice Configures sovereign bond static master data.
+    /// @dev    Assumes a coupon-bearing sovereign bond (`couponRateBps_ > 0`) and remains re-callable by `onlyOwner`
+    ///         in the POC for testnet/demo reconfiguration; in production, static master data (`isin`, `maturityDate`,
+    ///         `couponRateBps`) would be immutable after initialization.
     function setBondDetails(
         string calldata isin_,
         uint256 maturityDate_,

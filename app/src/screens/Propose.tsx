@@ -297,7 +297,7 @@ export function Propose() {
             <Check label="nhBOND available for the cap" ok={enoughBond} fail="Insufficient" detail={checks ? `${amount(checks.bondBalance - checks.bondFrozenTokens, 2)} free` : undefined} />
             <Check label="nhBOND wallet not frozen" ok={checks ? !checks.bondFrozen : undefined} fail="Frozen" />
             <Check label="nhBOND transfers live" ok={checks ? !checks.bondPaused : undefined} fail="Paused" />
-            <Check label="Oracle fresh · needed when the lender accepts" ok={!snapshot.oracle.stale} fail="Stale" />
+            <Check label="Oracle has a NAV · needed when the lender accepts" ok={!snapshot.oracle.invalid} fail="No NAV" />
             <Check label="ETH for gas" ok={checks ? checks.gas > 0n : undefined} fail="Empty" />
           </div>
           <div style={{ padding: '20px 24px 24px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 10 }}>

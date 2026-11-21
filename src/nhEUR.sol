@@ -26,10 +26,10 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
     /* ============ Storage ============ */
 
     /// @notice ERC-3643 IdentityRegistry enforcing institutional onboarding (shared with nhBOND and RepoDvP).
-    address private _identityRegistry;
+    address public identityRegistry;
 
     /// @notice Mapping tracking whether an address is frozen under AML/regulatory orders.
-    mapping(address account => bool frozen) private _frozenAccounts;
+    mapping(address account => bool frozen) public frozenAccounts;
 
     /* ============ Constructor ============ */
 
@@ -47,7 +47,7 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
         if (admin == address(0)) revert ZeroAdmin();
         if (treasury == address(0)) revert ZeroTreasury();
         if (compliance == address(0)) revert ZeroCompliance();
-        if ((_identityRegistry = identityRegistry_) == address(0)) revert ZeroIdentityRegistry();
+        if ((identityRegistry = identityRegistry_) == address(0)) revert ZeroIdentityRegistry();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(TREASURY_ROLE, treasury);
@@ -78,7 +78,7 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
     function setFrozen(address account, bool freezeStatus) external onlyRole(COMPLIANCE_ROLE) {
         if (account == address(0)) revert ZeroAddress();
 
-        _frozenAccounts[account] = freezeStatus;
+        frozenAccounts[account] = freezeStatus;
 
         if (freezeStatus) {
             emit AccountFrozen(account);
@@ -91,7 +91,7 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
     function setIdentityRegistry(address newRegistry) external onlyRole(DEFAULT_ADMIN_ROLE) {
         if (newRegistry == address(0)) revert ZeroIdentityRegistry();
 
-        _identityRegistry = newRegistry;
+        identityRegistry = newRegistry;
 
         emit IdentityRegistryUpdated(newRegistry);
     }
@@ -110,12 +110,7 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
 
     /// @inheritdoc InhEUR
     function isFrozen(address account) external view returns (bool) {
-        return _frozenAccounts[account];
-    }
-
-    /// @inheritdoc InhEUR
-    function identityRegistry() external view returns (address) {
-        return _identityRegistry;
+        return frozenAccounts[account];
     }
 
     /* ============ Internal Functions ============ */
@@ -123,12 +118,12 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
     /// @dev Hook enforcing KYC verification and freeze checks on all transfers, mints, and burns.
     function _update(address from, address to, uint256 value) internal override whenNotPaused {
         if (from != address(0)) {
-            if (_frozenAccounts[from]) revert AccountIsFrozen(from);
-            if (!IIdentityRegistry(_identityRegistry).isVerified(from)) revert NotKYCVerified(from);
+            if (frozenAccounts[from]) revert AccountIsFrozen(from);
+            if (!IIdentityRegistry(identityRegistry).isVerified(from)) revert NotKYCVerified(from);
         }
         if (to != address(0)) {
-            if (_frozenAccounts[to]) revert AccountIsFrozen(to);
-            if (!IIdentityRegistry(_identityRegistry).isVerified(to)) revert NotKYCVerified(to);
+            if (frozenAccounts[to]) revert AccountIsFrozen(to);
+            if (!IIdentityRegistry(identityRegistry).isVerified(to)) revert NotKYCVerified(to);
         }
 
         super._update(from, to, value);

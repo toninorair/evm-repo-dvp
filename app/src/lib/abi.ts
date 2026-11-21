@@ -10,11 +10,6 @@ export const repoDvpAbi = [
         "internalType": "address"
       },
       {
-        "name": "maxPriceAge_",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
         "name": "collateralToken_",
         "type": "address",
         "internalType": "address"
@@ -312,19 +307,6 @@ export const repoDvpAbi = [
   },
   {
     "type": "function",
-    "name": "maxPriceAge",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
     "name": "orders",
     "inputs": [
       {
@@ -489,6 +471,11 @@ export const repoDvpAbi = [
         "internalType": "enum RepoDvP.RepoStatus"
       },
       {
+        "name": "collateralAmount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
         "name": "startTime",
         "type": "uint40",
         "internalType": "uint40"
@@ -497,11 +484,6 @@ export const repoDvpAbi = [
         "name": "maturity",
         "type": "uint40",
         "internalType": "uint40"
-      },
-      {
-        "name": "collateralAmount",
-        "type": "uint256",
-        "internalType": "uint256"
       },
       {
         "name": "cureDeadline",
@@ -861,33 +843,12 @@ export const repoDvpAbi = [
   },
   {
     "type": "error",
-    "name": "ReentrancyGuardReentrantCall",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "SafeERC20FailedOperation",
     "inputs": [
       {
         "name": "token",
         "type": "address",
         "internalType": "address"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "StalePrice",
-    "inputs": [
-      {
-        "name": "updatedAt",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "currentTimestamp",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ]
   },
@@ -914,11 +875,6 @@ export const repoDvpAbi = [
   {
     "type": "error",
     "name": "ZeroCollateralToken",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ZeroMaxPriceAge",
     "inputs": []
   },
   {
@@ -2099,6 +2055,11 @@ export const oracleAbi = [
   {
     "type": "error",
     "name": "InvalidNAV",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ZeroAddress",
     "inputs": []
   }
 ] as const

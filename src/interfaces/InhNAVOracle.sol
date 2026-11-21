@@ -13,13 +13,16 @@ interface AggregatorV3Interface {
 }
 
 /// @title  InhNAVOracle
-/// @notice Minimal NAV oracle interface. Consumers must check `updatedAt` against their own staleness limit.
+/// @notice Minimal Chainlink AggregatorV3-compatible NAV oracle interface.
+/// @dev    Exposes `updatedAt` via `latestRoundData()` for off-chain monitors or consumers that enforce staleness.
 /// @author Ethereum Institutional / Nordhaven Bank
 interface InhNAVOracle is AggregatorV3Interface {
     event NAVSubmitted(uint80 indexed roundId, int256 navEur, uint256 updatedAt);
 
     error InvalidNAV();
+    error ZeroAddress();
 
-    /// @notice Publishes the NAV per share (EUR, 8 decimals, e.g. 100_00000000 = €100.00).
+    /// @notice Publishes a positive NAV per share (EUR, 8 decimals, e.g. 100_00000000 = €100.00).
+    /// @dev    Reverts with `InvalidNAV` if `navEur <= 0`.
     function updateNAV(int256 navEur) external;
 }

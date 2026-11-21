@@ -58,7 +58,7 @@ export function Header({ route }: { route: string }) {
         <a href={href('/')} style={{ display: 'flex', alignItems: 'center', gap: 14, color: 'var(--ink)', textDecoration: 'none' }}>
           <Mark size={44} />
           <span style={{ fontFamily: 'var(--display)', fontSize: 30 }}>Ethereum Institutional</span>
-          <span className="muted" style={{ borderLeft: '1px solid var(--line)', paddingLeft: 16, fontSize: 18 }}>
+          <span style={{ borderLeft: '1px solid var(--line)', paddingLeft: 16, fontSize: 18, color: 'var(--ok)' }}>
             Repo DvP · Nordhaven Bank
           </span>
         </a>

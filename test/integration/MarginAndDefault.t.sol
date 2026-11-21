@@ -193,9 +193,15 @@ contract MarginAndDefaultTest is RepoTestBase {
         vm.prank(bankB);
         vm.expectRevert(abi.encodeWithSelector(RepoDvP.InvalidState.selector, RepoDvP.RepoStatus.MarginCalled));
         repoDvP.claimDefault(activeRepoId);
+
+        // Once maturity also passes without repayment, the lender can claim default on maturity.
+        vm.warp(block.timestamp + TERM_SECONDS + 1);
+        vm.prank(bankB);
+        repoDvP.claimDefault(activeRepoId);
+        assertEq(uint8(_getState(activeRepoId).status), uint8(RepoDvP.RepoStatus.Defaulted));
     }
 
-    function test_TopUp_AcceptedAndDefaultBlockedWhileOracleStale() public {
+    function test_TopUp_And_Default_BlockedWhileOracleUnavailable() public {
         vm.prank(admin);
         oracle.updateNAV(85_00000000);
         repoDvP.marginCall(activeRepoId);
@@ -206,12 +212,13 @@ contract MarginAndDefaultTest is RepoTestBase {
             abi.encodeWithSelector(InhNAVOracle.InvalidNAV.selector)
         );
 
-        // Borrower can still post collateral; status stays MarginCalled until a live price confirms the cure.
+        // A top-up re-checks margin health, so it needs a live price: nothing moves while the oracle is down.
         vm.prank(bankA);
+        vm.expectRevert(InhNAVOracle.InvalidNAV.selector);
         repoDvP.topUpCollateral(activeRepoId, 20_000 ether);
         RepoDvP.RepoState memory state = _getState(activeRepoId);
         assertEq(uint8(state.status), uint8(RepoDvP.RepoStatus.MarginCalled));
-        assertEq(state.collateralAmount, collateralAmount + 20_000 ether);
+        assertEq(state.collateralAmount, collateralAmount);
 
         // Lender cannot seize on the margin path without a live price.
         vm.warp(block.timestamp + CURE_PERIOD_SECONDS + 1);

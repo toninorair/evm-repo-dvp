@@ -32,14 +32,17 @@ This document records architectural decisions, simplified settlement patterns, a
 ## 2. Reference Implementation: Off-Chain Order Execution (`executeRepoOrder`)
 
 ### Context
+
 Originally designed to enable zero-gas off-chain RFQ matching where Party A signs an EIP-712 structured order and Party B executes the match on-chain in a single transaction.
 
 ### Rationale for Removal from Core
+
 - **Eliminates Cryptographic Overhead:** Removes `EIP712` domain hashing and `ECDSA` signature recovery dependencies from the core clearing engine.
 - **Removes State Overhead:** Eliminates mapping storage for replay nonces (`mapping(address => mapping(uint256 => bool)) private _usedNonces`) and nonce invalidation transactions (`invalidateNonce`).
 - **Separation of Concerns:** In production institutional architectures, off-chain trade matching is decoupled into a peripheral matching router (forwarder), leaving the core settlement engine focused strictly on escrow, atomic settlement, and margin management.
 
 ### Saved Implementation
+
 ```solidity
 /// @notice EIP-712 structured order for off-chain repo negotiation.
 struct RepoOrder {
@@ -142,52 +145,80 @@ function _hashRepoOrder(RepoOrder calldata order) internal pure returns (bytes32
 ## 3. Reference Implementation: Gasless Approvals (`EIP-2612 Permit`)
 
 ### Context
+
 Originally designed to allow counterparties to approve collateral or cash spending via signed permits without executing a preceding `approve()` transaction.
 
 ### Rationale for Removal from Core
+
 - **Minimizes Gas & Bytecode:** Eliminates `try/catch` branching overhead in the critical settlement path.
 - **Prevents Divergent Token Semantics:** Not all institutional ERC-20 / ERC-3643 tokens implement EIP-2612 permits identically.
 - **Recommended Architecture:** Use a peripheral multicall router or forwarder that calls `token.permit(...)` followed immediately by `repoDvP.acceptRepo(...)` or `repoDvP.settleRepo(...)`.
 
 ### Saved Implementation
+
 ```solidity
 /// @notice Accepts a proposal with an inline EIP-2612 permit for the payer's asset.
 function acceptProposalWithPermit(
-    uint256 repoId,
-    uint256 permitDeadline,
-    uint8 v,
-    bytes32 r,
-    bytes32 s
+  uint256 repoId,
+  uint256 permitDeadline,
+  uint8 v,
+  bytes32 r,
+  bytes32 s
 ) external nonReentrant {
-    RepoTerms storage terms = _terms[repoId];
-    RepoState storage state = _states[repoId];
+  RepoTerms storage terms = _terms[repoId];
+  RepoState storage state = _states[repoId];
 
-    if (state.status != RepoStatus.Proposed) {
-        revert InvalidState(RepoStatus.Proposed, state.status);
-    }
+  if (state.status != RepoStatus.Proposed) {
+    revert InvalidState(RepoStatus.Proposed, state.status);
+  }
 
-    address payer = (terms.lender == address(0) || terms.lender == msg.sender) ? msg.sender : terms.borrower;
-    address token = (payer == terms.lender) ? terms.cashToken : terms.collateralToken;
-    uint256 amount = (payer == terms.lender) ? terms.cashAmount : terms.collateralAmount;
+  address payer =
+    (terms.lender == address(0) || terms.lender == msg.sender)
+      ? msg.sender
+      : terms.borrower;
+  address token =
+    (payer == terms.lender) ? terms.cashToken : terms.collateralToken;
+  uint256 amount =
+    (payer == terms.lender) ? terms.cashAmount : terms.collateralAmount;
 
-    try IERC20Permit(token).permit(payer, address(this), amount, permitDeadline, v, r, s) {} catch {}
+  try
+    IERC20Permit(token).permit(
+      payer,
+      address(this),
+      amount,
+      permitDeadline,
+      v,
+      r,
+      s
+    )
+  {} catch {}
 
-    _acceptProposal(repoId);
+  _acceptProposal(repoId);
 }
 
 /// @notice Settles a repo with an inline EIP-2612 permit for the cash repayment.
 function settleRepoWithPermit(
-    uint256 repoId,
-    uint256 permitDeadline,
-    uint8 v,
-    bytes32 r,
-    bytes32 s
+  uint256 repoId,
+  uint256 permitDeadline,
+  uint8 v,
+  bytes32 r,
+  bytes32 s
 ) external nonReentrant {
-    RepoTerms storage terms = _terms[repoId];
-    (,, uint256 totalRepurchasePrice) = calculateRepurchasePrice(repoId);
+  RepoOrder storage order = orders[repoId];
+  uint256 totalRepurchasePrice = getCurrentRepurchasePrice(repoId);
 
-    try IERC20Permit(terms.cashToken).permit(terms.borrower, address(this), totalRepurchasePrice, permitDeadline, v, r, s) {} catch {}
+  try
+    IERC20Permit(cashToken).permit(
+      order.borrower,
+      address(this),
+      totalRepurchasePrice,
+      permitDeadline,
+      v,
+      r,
+      s
+    )
+  {} catch {}
 
-    _settleRepo(repoId);
+  _settleRepo(repoId);
 }
 ```

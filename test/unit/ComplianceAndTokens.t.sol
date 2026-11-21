@@ -84,6 +84,12 @@ contract ComplianceAndTokensTest is RepoTestBase {
 
     function test_nhNAVOracle_LifecycleAndGuards() public {
         address calcAgent = makeAddr("calcAgent");
+
+        vm.expectRevert(InhNAVOracle.ZeroAddress.selector);
+        new nhNAVOracle(address(0), calcAgent);
+        vm.expectRevert(InhNAVOracle.ZeroAddress.selector);
+        new nhNAVOracle(admin, address(0));
+
         nhNAVOracle navOracle = new nhNAVOracle(admin, calcAgent);
         assertEq(navOracle.decimals(), 8);
 
@@ -100,10 +106,16 @@ contract ComplianceAndTokensTest is RepoTestBase {
         vm.expectRevert();
         navOracle.updateNAV(100_25000000);
 
-        // Non-positive NAV reverts
-        vm.prank(calcAgent);
+        // Zero or negative NAV reverts
+        vm.startPrank(calcAgent);
         vm.expectRevert(InhNAVOracle.InvalidNAV.selector);
         navOracle.updateNAV(0);
+        vm.expectRevert(InhNAVOracle.InvalidNAV.selector);
+        navOracle.updateNAV(-1);
+        vm.stopPrank();
+
+        // getCollateralPrice returns the latest NAV as uint256
+        assertEq(navOracle.getCollateralPrice(), 100_20000000);
 
         // No staleness revert in the oracle: it returns raw data and consumers check updatedAt
         uint256 submittedAt = block.timestamp;

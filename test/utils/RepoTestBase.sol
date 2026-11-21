@@ -42,8 +42,6 @@ abstract contract RepoTestBase is Test {
     /* ============ Constants ============ */
 
     int256 internal constant INITIAL_BOND_PRICE = 100_00000000; // €100.00 par (8 decimals)
-    // Long enough that tests warping through a full term are not tripped by staleness; staleness has its own test.
-    uint256 internal constant MAX_PRICE_AGE = 365 days;
     uint256 internal constant INITIAL_CASH_BALANCE = 100_000_000 ether; // €100M
     uint256 internal constant INITIAL_BOND_BALANCE = 1_000_000 ether; // 1M bonds (€100M par)
 
@@ -77,7 +75,7 @@ abstract contract RepoTestBase is Test {
         cashToken = new nhEUR(admin, treasury, compliance, address(identityRegistry));
 
         // 4. Deploy RepoDvP Engine
-        repoDvP = new RepoDvP(address(oracle), MAX_PRICE_AGE, address(bondToken), address(cashToken));
+        repoDvP = new RepoDvP(address(oracle), address(bondToken), address(cashToken));
 
         vm.stopPrank();
 
@@ -107,7 +105,7 @@ abstract contract RepoTestBase is Test {
 
     /// @dev Reads a repo's state from the public `states` mapping getter.
     function _getState(uint256 repoId) internal view returns (RepoDvP.RepoState memory s) {
-        (s.status, s.startTime, s.maturity, s.collateralAmount, s.cureDeadline) = repoDvP.states(repoId);
+        (s.status, s.collateralAmount, s.startTime, s.maturity, s.cureDeadline) = repoDvP.states(repoId);
     }
 
     /// @dev Reads a repo's terms from the public `orders` mapping getter.

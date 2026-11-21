@@ -2,6 +2,7 @@
   "name": "evm-dvp-repo",
   "version": "0.1.0",
   "description": "Smart contracts for tokenized repurchase agreements (DvP repo)",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "build": "make -B build",

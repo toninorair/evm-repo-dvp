@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 680" width="100%" height="100%" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748B"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#15803D"/>
+    </marker>
+    <filter id="card-shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.04"/>
+    </filter>
+  </defs>
+
+  <!-- Pure White Background -->
+  <rect width="1100" height="680" fill="#FFFFFF" rx="12"/>
+  <rect x="1" y="1" width="1098" height="678" fill="none" stroke="#E2E8F0" stroke-width="1.5" rx="12"/>
+
+  <!-- Top Brand & Header Bar -->
+  <!-- Ethereum Institutional Logo Lockup (Top Left) -->
+  <g transform="translate(40, 20)">
+    <svg x="0" y="0" width="26" height="38" viewBox="100 55 200 290" fill="#0F172A">
+      <circle cx="200" cy="71" r="6"/>
+      <rect x="185" y="91" width="30" height="12" rx="6"/>
+      <rect x="165" y="116" width="70" height="12" rx="6"/>
+      <rect x="150" y="142" width="100" height="12" rx="6"/>
+      <rect x="125" y="167" width="150" height="12" rx="6"/>
+      <rect x="112" y="193" width="176" height="12" rx="6"/>
+      <rect x="125" y="218" width="150" height="12" rx="6"/>
+      <rect x="150" y="244" width="100" height="12" rx="6"/>
+      <rect x="165" y="269" width="70" height="12" rx="6"/>
+      <rect x="185" y="295" width="30" height="12" rx="6"/>
+      <circle cx="200" cy="328" r="6"/>
+    </svg>
+    <text x="36" y="25" font-family="Georgia, 'Times New Roman', serif" font-size="18.5" fill="#0F172A" letter-spacing="-0.01em">Ethereum Institutional</text>
+  </g>
+
+  <!-- Center Title -->
+  <text x="595" y="40" text-anchor="middle" font-size="18" font-weight="700" fill="#0F172A" letter-spacing="-0.01em">Nordhaven Tokenised Repo — Smart Contract Architecture</text>
+  <text x="595" y="61" text-anchor="middle" font-size="12.5" fill="#64748B">Permissioned ERC-3643 Collateral · Commercial Bank Deposit Cash Leg · Bilateral Repurchase DvP Smart Contract</text>
+  <line x1="40" y1="78" x2="1060" y2="78" stroke="#E2E8F0" stroke-width="1"/>
+
+  <!-- TOP LAYER: Compliance & Oracle Group -->
+  <text x="550" y="102" text-anchor="middle" font-size="10.5" font-weight="700" fill="#64748B" letter-spacing="0.08em">ON-CHAIN COMPLIANCE &amp; VALUATION INFRASTRUCTURE</text>
+
+  <!-- IdentityRegistry Box (x: 200..530, y: 114..194) -->
+  <g filter="url(#card-shadow)">
+    <rect x="200" y="114" width="330" height="80" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+    <rect x="200" y="114" width="6" height="80" rx="3" fill="#64748B"/>
+    <text x="222" y="139" font-size="13.5" font-weight="700" fill="#0F172A">IdentityRegistry (ERC-3643 / T-REX)</text>
+    <text x="222" y="159" font-size="11.5" fill="#475569">Verifies ONCHAINID identity for Borrower, Lender &amp; RepoDvP</text>
+    <text x="222" y="178" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#0F766E">isVerified(account) → bool</text>
+  </g>
+
+  <!-- nhNAVOracle Box (x: 570..900, y: 114..194) -->
+  <g filter="url(#card-shadow)">
+    <rect x="570" y="114" width="330" height="80" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+    <rect x="570" y="114" width="6" height="80" rx="3" fill="#15803D"/>
+    <text x="592" y="139" font-size="13.5" font-weight="700" fill="#0F172A">nhNAVOracle.sol</text>
+    <text x="592" y="159" font-size="11.5" fill="#475569">Chainlink AggregatorV3 EUR Bond Price / NAV Feed</text>
+    <text x="592" y="178" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#15803D">latestRoundData() → int256 (8 dec)</text>
+  </g>
+
+  <!-- Top-to-Middle Connectors (strictly in open space y: 194..268) -->
+  <line x1="435" y1="194" x2="435" y2="264" stroke="#64748B" stroke-width="1.5" stroke-dasharray="4,3" marker-end="url(#arrow-gray)"/>
+  <rect x="353" y="219" width="164" height="20" rx="4" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+  <text x="435" y="233" text-anchor="middle" font-size="10.5" fill="#475569">Live KYC check on proposal</text>
+
+  <line x1="665" y1="194" x2="665" y2="264" stroke="#15803D" stroke-width="1.8" marker-end="url(#arrow-green)"/>
+  <rect x="590" y="219" width="150" height="20" rx="4" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1"/>
+  <text x="665" y="233" text-anchor="middle" font-size="10.5" font-weight="600" fill="#166534">Live EUR NAV Pricing</text>
+
+  <!-- MIDDLE LAYER: Borrower Desk | RepoDvP Core | Lender Desk -->
+
+  <!-- Left: Borrower Desk (x: 40..275, y: 285..427) -->
+  <g filter="url(#card-shadow)">
+    <rect x="40" y="285" width="235" height="142" rx="10" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.5"/>
+    <text x="60" y="312" font-size="11" font-weight="700" fill="#64748B" letter-spacing="0.06em">COUNTERPARTY A</text>
+    <text x="60" y="333" font-size="15" font-weight="700" fill="#0F172A">Borrower Desk</text>
+    <text x="60" y="351" font-size="11.5" fill="#475569">Cash Borrower / Bond Pledger</text>
+    <line x1="60" y1="362" x2="255" y2="362" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="60" y="380" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#334155">• proposeRepo() / cancelRepo()</text>
+    <text x="60" y="397" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#334155">• topUpCollateral()</text>
+    <text x="60" y="414" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#15803D">• settleRepo() (Closing RvP)</text>
+  </g>
+
+  <!-- Horizontal Connector: Borrower -> RepoDvP (strictly in open space x: 275..355) -->
+  <line x1="275" y1="356" x2="349" y2="356" stroke="#15803D" stroke-width="1.8" marker-end="url(#arrow-green)"/>
+
+  <!-- Center: RepoDvP Engine (x: 355..745, y: 270..442) -->
+  <g filter="url(#card-shadow)">
+    <rect x="355" y="270" width="390" height="172" rx="12" fill="#F0FDF4" stroke="#15803D" stroke-width="2"/>
+    <rect x="375" y="286" width="242" height="22" rx="11" fill="#DCFCE7" stroke="#86EFAC" stroke-width="1"/>
+    <text x="496" y="301" text-anchor="middle" font-size="10.5" font-weight="700" fill="#166534" letter-spacing="0.05em">BILATERAL REPURCHASE DvP CONTRACT</text>
+
+    <text x="375" y="330" font-size="17" font-weight="700" fill="#0F172A">RepoDvP.sol</text>
+    <text x="375" y="350" font-size="12" fill="#334155">Atomic Delivery-versus-Payment &amp; Margin Engine</text>
+
+    <line x1="375" y1="362" x2="725" y2="362" stroke="#BBF7D0" stroke-width="1.2"/>
+
+    <text x="375" y="382" font-size="11.5" fill="#1E293B">1. Sizes opening collateral dynamically from live NAV</text>
+    <text x="375" y="400" font-size="11.5" fill="#1E293B">2. Locks nhBOND during term · accrues Actual/360 interest</text>
+    <text x="375" y="418" font-size="11.5" fill="#1E293B">3. Enforces MTM margin calls &amp; GMRA close-out netting</text>
+  </g>
+
+  <!-- Horizontal Connector: Lender -> RepoDvP (strictly in open space x: 745..825) -->
+  <line x1="825" y1="356" x2="751" y2="356" stroke="#15803D" stroke-width="1.8" marker-end="url(#arrow-green)"/>
+
+  <!-- Right: Lender Desk (x: 825..1060, y: 285..427) -->
+  <g filter="url(#card-shadow)">
+    <rect x="825" y="285" width="235" height="142" rx="10" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.5"/>
+    <text x="845" y="312" font-size="11" font-weight="700" fill="#64748B" letter-spacing="0.06em">COUNTERPARTY B</text>
+    <text x="845" y="333" font-size="15" font-weight="700" fill="#0F172A">Lender Desk</text>
+    <text x="845" y="351" font-size="11.5" fill="#475569">Cash Lender / Liquidity Provider</text>
+    <line x1="845" y1="362" x2="1040" y2="362" stroke="#E2E8F0" stroke-width="1"/>
+    <text x="845" y="380" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#15803D">• acceptRepo() (Opening DvP)</text>
+    <text x="845" y="397" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#334155">• marginCall() (Permissionless)</text>
+    <text x="845" y="414" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#334155">• claimDefault() (Net Seizure)</text>
+  </g>
+
+  <!-- Middle-to-Bottom Connectors (strictly in open space y: 442..536) -->
+  <line x1="435" y1="448" x2="435" y2="530" stroke="#15803D" stroke-width="1.8" marker-end="url(#arrow-green)" marker-start="url(#arrow-green)"/>
+  <rect x="348" y="479" width="174" height="20" rx="4" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1"/>
+  <text x="435" y="493" text-anchor="middle" font-size="10.5" font-weight="600" fill="#166534">Lock Collateral / Release</text>
+
+  <line x1="665" y1="442" x2="665" y2="530" stroke="#64748B" stroke-width="1.8" marker-end="url(#arrow-gray)"/>
+  <rect x="582" y="479" width="166" height="20" rx="4" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+  <text x="665" y="493" text-anchor="middle" font-size="10.5" fill="#475569">Direct Lender ↔ Borrower</text>
+
+  <!-- BOTTOM LAYER: Permissioned Token Legs -->
+  <!-- nhBOND Box (x: 200..530, y: 536..616) -->
+  <g filter="url(#card-shadow)">
+    <rect x="200" y="536" width="330" height="80" rx="8" fill="#FFFFFF" stroke="#86EFAC" stroke-width="1.5"/>
+    <rect x="200" y="536" width="6" height="80" rx="3" fill="#16A34A"/>
+    <text x="222" y="561" font-size="13.5" font-weight="700" fill="#0F172A">nhBOND.sol (Collateral Leg)</text>
+    <text x="222" y="580" font-size="11.5" fill="#475569">Official ERC-3643 Tokenised Sovereign Bond</text>
+    <text x="222" y="599" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#166534">IdentityRegistry · ModularCompliance · AgentRole</text>
+  </g>
+
+  <!-- nhEUR Box (x: 570..900, y: 536..616) -->
+  <g filter="url(#card-shadow)">
+    <rect x="570" y="536" width="330" height="80" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.5"/>
+    <rect x="570" y="536" width="6" height="80" rx="3" fill="#475569"/>
+    <text x="592" y="561" font-size="13.5" font-weight="700" fill="#0F172A">nhEUR.sol (Cash Leg)</text>
+    <text x="592" y="580" font-size="11.5" fill="#475569">Tokenised EUR Bank Deposit (JPM Coin / JPMD Model)</text>
+    <text x="592" y="599" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#334155">TREASURY_ROLE · COMPLIANCE_ROLE · ERC20Permit</text>
+  </g>
+
+  <text x="550" y="646" text-anchor="middle" font-size="10.5" font-weight="700" fill="#64748B" letter-spacing="0.08em">PERMISSIONED SETTLEMENT ASSET LEGS (GATED BY SHARED ERC-3643 IDENTITY REGISTRY)</text>
+</svg>

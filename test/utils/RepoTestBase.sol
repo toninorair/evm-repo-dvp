@@ -55,6 +55,8 @@ abstract contract RepoTestBase is Test {
     /* ============ Constants ============ */
 
     int256 internal constant INITIAL_BOND_PRICE = 100_00000000; // €100.00 par (8 decimals)
+    // Long enough that tests warping through a full term are not tripped by staleness; staleness has its own test.
+    uint256 internal constant MAX_PRICE_AGE = 365 days;
     uint256 internal constant INITIAL_CASH_BALANCE = 100_000_000 ether; // €100M
     uint256 internal constant INITIAL_BOND_BALANCE = 1_000_000 ether; // 1M bonds (€100M par)
 
@@ -66,7 +68,10 @@ abstract contract RepoTestBase is Test {
 
         vm.startPrank(admin);
 
-        // 1. Deploy Authentic ERC-3643 Infrastructure & Bond Token (Official T-REX Framework)
+        // 1. Deploy Bond Price Oracle (8 decimals, €100.00)
+        oracle = new MockBondPriceOracle(admin, INITIAL_BOND_PRICE);
+
+        // 2. Deploy Authentic ERC-3643 Infrastructure & Bond Token (Official T-REX Framework)
         ITREXDeployer trexDeployer = ITREXDeployer(deployCode("TREXDeployer.sol:TREXDeployer"));
         ITREXDeployer.TREXSuite memory suite = trexDeployer.deploySuite(
             admin,
@@ -74,7 +79,8 @@ abstract contract RepoTestBase is Test {
             treasury,
             "Nordhaven Sovereign Bond NAV",
             "nhBOND NAV",
-            18
+            18,
+            address(oracle)
         );
         claimTopicsRegistry = IERC3643ClaimTopicsRegistry(suite.claimTopicsRegistry);
         trustedIssuersRegistry = IERC3643TrustedIssuersRegistry(suite.trustedIssuersRegistry);
@@ -83,11 +89,8 @@ abstract contract RepoTestBase is Test {
         modularCompliance = IERC3643Compliance(suite.modularCompliance);
         bondToken = ITestBond(suite.token);
 
-        // 2. Deploy Compliance Registry (for nhEUR / RepoDvP)
+        // 3. Deploy Compliance Registry (for nhEUR / RepoDvP)
         complianceRegistry = new ComplianceRegistry(admin, compliance);
-
-        // 3. Deploy Bond Price Oracle (8 decimals, €100.00)
-        oracle = new MockBondPriceOracle(admin, INITIAL_BOND_PRICE);
 
         // 4. Deploy nhEUR Deposit Token
         cashToken = new nhEUR(admin, treasury, compliance, address(complianceRegistry));
@@ -97,6 +100,7 @@ abstract contract RepoTestBase is Test {
             admin,
             address(complianceRegistry),
             address(oracle),
+            MAX_PRICE_AGE,
             address(bondToken),
             address(cashToken)
         );

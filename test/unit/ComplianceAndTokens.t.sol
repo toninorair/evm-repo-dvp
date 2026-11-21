@@ -1,14 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {RepoTestBase} from "../utils/RepoTestBase.sol";
-import {InhEUR} from "../../src/interfaces/InhEUR.sol";
-import {IERC3643} from "../interfaces/IERC3643.sol";
-import {IComplianceRegistry} from "../../src/interfaces/IComplianceRegistry.sol";
-import {ICollateralPriceOracle} from "../../src/interfaces/ICollateralPriceOracle.sol";
-import {nhNAVOracle} from "../../src/nhNAVOracle.sol";
-import {InhNAVOracle} from "../../src/interfaces/InhNAVOracle.sol";
-import {MockIdentity} from "../mock/MockIdentity.sol";
+import { RepoTestBase } from "../utils/RepoTestBase.sol";
+import { InhEUR } from "../../src/interfaces/InhEUR.sol";
+import { IERC3643 } from "../interfaces/IERC3643.sol";
+import { IComplianceRegistry } from "../../src/interfaces/IComplianceRegistry.sol";
+import { ICollateralPriceOracle } from "../../src/interfaces/ICollateralPriceOracle.sol";
+import { nhNAVOracle } from "../../src/nhNAVOracle.sol";
+import { InhNAVOracle } from "../../src/interfaces/InhNAVOracle.sol";
+import { MockIdentity } from "../mock/MockIdentity.sol";
 
 /// @title  ComplianceAndTokensTest
 /// @notice Unit tests for ComplianceRegistry, nhEUR, nhBOND NAV, and nhNAVOracle.
@@ -114,49 +114,44 @@ contract ComplianceAndTokensTest is RepoTestBase {
 
     function test_nhNAVOracle_LifecycleAndGuards() public {
         address calcAgent = makeAddr("calcAgent");
-        nhNAVOracle navOracle = new nhNAVOracle(admin, calcAgent, 100_00000000, 86_400, 50);
-
-        // Verify initial state
+        nhNAVOracle navOracle = new nhNAVOracle(admin, calcAgent);
         assertEq(navOracle.decimals(), 8);
-        (, int256 price,,,) = navOracle.latestRoundData();
-        assertEq(price, 100_00000000);
 
-        // Submit daily NAV update from authorized Calculation Agent
-        int256 newNAV = 100_20000000; // €100.20 (+20 bps, within 50 bps limit)
-        bytes32 auditHash = keccak256("AUDIT-REPORT-Q4-2026");
+        // Calculation Agent publishes the NAV
         vm.prank(calcAgent);
-        navOracle.submitDailyNAV(newNAV, 500_000_000 ether, 5_000_000 ether, auditHash);
-
-        (, int256 updatedPrice,,,) = navOracle.latestRoundData();
-        assertEq(updatedPrice, newNAV);
+        navOracle.updateNAV(100_20000000);
+        (uint80 roundId, int256 price, , uint256 updatedAt, ) = navOracle.latestRoundData();
+        assertEq(roundId, 1);
+        assertEq(price, 100_20000000);
+        assertEq(updatedAt, block.timestamp);
 
         // Non-authorized caller reverts
         vm.prank(bankA);
         vm.expectRevert();
-        navOracle.submitDailyNAV(100_25000000, 500_000_000 ether, 5_000_000 ether, auditHash);
+        navOracle.updateNAV(100_25000000);
 
-        // Exceeding 50 bps deviation circuit breaker reverts
-        int256 excessiveNAV = 101_50000000; // +1.3% movement (> 50 bps)
+        // Non-positive NAV reverts
         vm.prank(calcAgent);
-        vm.expectRevert();
-        navOracle.submitDailyNAV(excessiveNAV, 500_000_000 ether, 5_000_000 ether, auditHash);
+        vm.expectRevert(InhNAVOracle.InvalidNAV.selector);
+        navOracle.updateNAV(0);
 
-        // Staleness check (warp past 24 hours)
-        vm.warp(block.timestamp + 86_401);
-        vm.expectRevert();
-        navOracle.latestRoundData();
+        // No staleness revert in the oracle: it returns raw data and consumers check updatedAt
+        uint256 submittedAt = block.timestamp;
+        vm.warp(block.timestamp + 30 days);
+        (, , , updatedAt, ) = navOracle.latestRoundData();
+        assertEq(updatedAt, submittedAt);
     }
 
     function test_MockOracle_PriceUpdates() public {
         assertEq(oracle.decimals(), 8);
-        (, int256 price,,,) = oracle.latestRoundData();
+        (, int256 price, , , ) = oracle.latestRoundData();
         assertEq(price, INITIAL_BOND_PRICE);
 
         int256 newPrice = 98_50000000; // €98.50
         vm.prank(admin);
         oracle.updatePrice(newPrice);
 
-        (, int256 updatedPrice,,,) = oracle.latestRoundData();
+        (, int256 updatedPrice, , , ) = oracle.latestRoundData();
         assertEq(updatedPrice, newPrice);
 
         vm.prank(admin);

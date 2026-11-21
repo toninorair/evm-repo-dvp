@@ -20,7 +20,7 @@ This architecture specifies a **24/7, atomic Delivery-versus-Payment (DvP) repur
 
 - **Collateral Leg (`nhBOND NAV`):** Strictly implemented using the official **ERC-3643 (T-REX)** token standard, representing tokenised European sovereign bond units valued at continuous Net Asset Value (**`nhBOND NAV`**), incorporating on-chain identity verification (`ONCHAINID`), claim topics, and modular compliance rules.
 - **Cash Leg (`nhEUR`):** Structured as a **Tokenised Commercial Bank Deposit** strictly modeled after **J.P. Morgan’s JPM Coin (`JPMD`)** (deployed on Ethereum Mainnet at `0xb2906cCED1b2c8330480414CeFA1eb52bDBd73A3`), featuring 4-tier banking controls and EIP-2612 gasless atomic permit capabilities.
-- **Real Fund NAV Oracle (`nhNAVOracle`):** A production-grade Net Asset Value (NAV) Oracle modeling real-world tokenized money market funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink’s `AggregatorV3Interface` with calculation agent attestation, staleness heartbeats, and volatility circuit breakers.
+- **Real Fund NAV Oracle (`nhNAVOracle`):** A production-grade Net Asset Value (NAV) Oracle modeling real-world tokenized money market funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink’s `AggregatorV3Interface` with calculation agent attestation; staleness is checked by the consumer (`RepoDvP.maxPriceAge`).
 - **Settlement & Escrow Engine (`RepoDvP`):** Operating as a decentralized tri-party collateral agent with EIP-712 zero-transaction off-chain order execution, Actual/360 money market interest accrual, and programmatic margin management.
 
 ---
@@ -78,10 +78,8 @@ This architecture specifies a **24/7, atomic Delivery-versus-Payment (DvP) repur
    - Fully implements Chainlink's **`AggregatorV3Interface`** (`latestRoundData`, `decimals() == 8`).
    - Ingests certified Net Asset Value (NAV) updates submitted by an authorized institutional **Calculation Agent / Fund Administrator** (e.g., BNY Mellon, State Street, or Apex Group).
    - Features built-in institutional risk guardrails:
-     - _Calculation Agent Attestation:_ Only authorized administrator addresses can submit daily certified NAVs.
-     - _Staleness Protection (Heartbeat):_ Reverts if NAV has not been updated within 24 hours.
-     - _Daily Deviation Bounds:_ Circuit-breaker reverting if daily price movement exceeds `50 bps` (0.50%), preventing flash-oracle manipulation.
-     - _Audit Anchoring:_ Stores cryptographic IPFS / report hashes of the underlying fund audit report.
+     - _Calculation Agent Attestation:_ Only holders of `CALCULATION_AGENT_ROLE` can submit daily certified NAVs.
+     - _Staleness (consumer-side):_ Like any Chainlink feed, `latestRoundData()` returns raw data; `RepoDvP` rejects prices older than its immutable `maxPriceAge`.
 
 4. **`RepoDvP.sol` (Core Settlement & Escrow Engine):**
    - Manages the lifecycle of repurchase agreements between two verified institutional counterparties.
@@ -214,46 +212,15 @@ interface AggregatorV3Interface {
 }
 
 /// @title  InhNAVOracle
-/// @notice Production NAV Oracle interface for tokenised sovereign bond funds and money market funds.
-/// @dev    Modeled after BlackRock BUIDL, Ondo Finance RWAOracle, and Chainlink NavLink.
+/// @notice Minimal NAV oracle interface for tokenised sovereign bond funds and money market funds.
+/// @dev    Consumers must check `updatedAt` from `latestRoundData()` against their own staleness limit.
 interface InhNAVOracle is AggregatorV3Interface {
-  event NAVSubmitted(
-    uint80 indexed roundId,
-    int256 navEur,
-    uint256 totalAUM,
-    uint256 totalShares,
-    bytes32 auditHash,
-    uint256 timestamp
-  );
-  event CalculationAgentUpdated(
-    address indexed previousAgent,
-    address indexed newAgent
-  );
-  event MaxStalenessPeriodUpdated(uint256 newPeriod);
-  event MaxDailyDeviationBpsUpdated(uint256 newDeviationBps);
+  event NAVSubmitted(uint80 indexed roundId, int256 navEur, uint256 updatedAt);
 
-  error UnauthorizedCalculationAgent();
-  error StalePrice(uint256 lastUpdatedAt, uint256 currentTimestamp);
-  error PriceDeviationExceeded(
-    int256 previousPrice,
-    int256 submittedPrice,
-    uint256 deviationBps
-  );
   error InvalidNAV();
-  error ZeroAddress();
 
-  /// @notice Ingests certified daily NAV from the designated institutional Fund Administrator.
-  function submitDailyNAV(
-    int256 navEur,
-    uint256 totalAUM,
-    uint256 totalShares,
-    bytes32 auditReportHash
-  ) external;
-
-  function calculationAgent() external view returns (address);
-  function maxStalenessPeriod() external view returns (uint256);
-  function maxDailyDeviationBps() external view returns (uint256);
-  function lastAuditReportHash() external view returns (bytes32);
+  /// @notice Publishes the NAV per share (EUR, 8 decimals).
+  function updateNAV(int256 navEur) external;
 }
 ```
 

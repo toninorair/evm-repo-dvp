@@ -18,6 +18,7 @@ import { ITREXDeployer } from "../helper/ITREXDeployer.sol";
 /// @author Ethereum Institutional / Nordhaven Bank
 contract DeployAll is Script {
     int256 internal constant INITIAL_BOND_PRICE = 100_00000000; // €100.00 par (8 decimals)
+    uint256 internal constant MAX_PRICE_AGE = 4 days; // matches the NAV oracle's daily update cadence with slack
     uint256 internal constant INITIAL_DEMO_CASH = 50_000_000 ether; // €50M demo liquidity
     uint256 internal constant INITIAL_DEMO_BONDS = 500_000 ether; // 500k bonds (€50M par)
 
@@ -44,7 +45,12 @@ contract DeployAll is Script {
 
         vm.startBroadcast(deployerPrivateKey);
 
-        // 1. Deploy Legacy & ERC-3643 Compliance Infrastructure (Official T-REX Framework)
+        // 1. Deploy RWA Fund NAV Oracle (Chainlink AggregatorV3 compatible)
+        oracle = new nhNAVOracle(deployer, deployer);
+        oracle.updateNAV(INITIAL_BOND_PRICE);
+        console2.log("nhNAVOracle deployed at:", address(oracle));
+
+        // 2. Deploy Legacy & ERC-3643 Compliance Infrastructure (Official T-REX Framework)
         complianceRegistry = new ComplianceRegistry(deployer, deployer);
         console2.log("ComplianceRegistry deployed at:", address(complianceRegistry));
 
@@ -55,15 +61,12 @@ contract DeployAll is Script {
             deployer,
             "Nordhaven Sovereign Bond NAV",
             "nhBOND NAV",
-            18
+            18,
+            address(oracle)
         );
         IERC3643IdentityRegistry identityRegistry = IERC3643IdentityRegistry(suite.identityRegistry);
         bondToken = InhBOND(suite.token);
         console2.log("IdentityRegistry deployed at:", address(identityRegistry));
-
-        // 2. Deploy RWA Fund NAV Oracle (Chainlink AggregatorV3 compatible)
-        oracle = new nhNAVOracle(deployer, deployer, INITIAL_BOND_PRICE, 4 days, 50);
-        console2.log("nhNAVOracle deployed at:", address(oracle));
 
         // 3. Deploy nhEUR (Tokenised Commercial Bank Deposit - JPM Coin Model)
         cashToken = new nhEUR(deployer, deployer, deployer, address(complianceRegistry));
@@ -77,6 +80,7 @@ contract DeployAll is Script {
             deployer,
             address(complianceRegistry),
             address(oracle),
+            MAX_PRICE_AGE,
             address(bondToken),
             address(cashToken)
         );

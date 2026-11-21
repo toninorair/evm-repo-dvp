@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {ICollateralPriceOracle} from "../../src/interfaces/ICollateralPriceOracle.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { ICollateralPriceOracle } from "../../src/interfaces/ICollateralPriceOracle.sol";
 
 /// @title  MockBondPriceOracle
 /// @notice Mock Chainlink AggregatorV3 price feed reporting EUR sovereign bond prices.
@@ -12,9 +12,6 @@ contract MockBondPriceOracle is ICollateralPriceOracle, AccessControl {
     /* ============ Constants ============ */
 
     bytes32 public constant ORACLE_FEEDER_ROLE = keccak256("ORACLE_FEEDER_ROLE");
-    uint8 public constant DECIMALS = 8;
-    string public constant DESCRIPTION = "Nordhaven EUR Sovereign Bond / EUR";
-    uint256 public constant VERSION = 1;
 
     /* ============ Storage ============ */
 
@@ -59,17 +56,17 @@ contract MockBondPriceOracle is ICollateralPriceOracle, AccessControl {
 
     /// @inheritdoc ICollateralPriceOracle
     function decimals() external pure returns (uint8) {
-        return DECIMALS;
+        return 8;
     }
 
     /// @inheritdoc ICollateralPriceOracle
     function description() external pure returns (string memory) {
-        return DESCRIPTION;
+        return "Nordhaven EUR Sovereign Bond / EUR";
     }
 
     /// @inheritdoc ICollateralPriceOracle
     function version() external pure returns (uint256) {
-        return VERSION;
+        return 1;
     }
 
     /// @inheritdoc ICollateralPriceOracle

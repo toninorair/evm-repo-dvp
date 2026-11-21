@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {IComplianceRegistry} from "./interfaces/IComplianceRegistry.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { IComplianceRegistry } from "./interfaces/IComplianceRegistry.sol";
 
 /// @title  ComplianceRegistry
 /// @notice Institutional KYC/AML and identity verification registry for Nordhaven Bank ecosystem.
@@ -41,10 +41,10 @@ contract ComplianceRegistry is IComplianceRegistry, AccessControl {
     }
 
     /// @inheritdoc IComplianceRegistry
-    function setBatchVerificationStatus(address[] calldata accounts, bool isVerified_)
-        external
-        onlyRole(COMPLIANCE_ROLE)
-    {
+    function setBatchVerificationStatus(
+        address[] calldata accounts,
+        bool isVerified_
+    ) external onlyRole(COMPLIANCE_ROLE) {
         uint256 length = accounts.length;
         for (uint256 i = 0; i < length;) {
             address account = accounts[i];

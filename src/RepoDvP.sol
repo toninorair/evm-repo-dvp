@@ -92,6 +92,9 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, AccessControl {
     /// @notice Price oracle reporting sovereign bond EUR prices (Chainlink AggregatorV3).
     address public immutable collateralOracle;
 
+    /// @notice Maximum age (seconds) of the oracle price before it is rejected as stale.
+    uint256 public immutable maxPriceAge;
+
     /// @notice The collateral (securities leg) token accepted by this engine, e.g. nhBOND.
     address public immutable collateralToken;
 
@@ -115,18 +118,21 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, AccessControl {
     /// @param  admin                Address granted DEFAULT_ADMIN_ROLE and RISK_MANAGER_ROLE.
     /// @param  complianceRegistry_ Address of the institutional KYC registry.
     /// @param  collateralOracle_    Address of the collateral price oracle.
+    /// @param  maxPriceAge_         Maximum accepted age of the oracle price, in seconds.
     /// @param  collateralToken_     Address of the collateral token.
     /// @param  cashToken_           Address of the cash token.
     constructor(
         address admin,
         address complianceRegistry_,
         address collateralOracle_,
+        uint256 maxPriceAge_,
         address collateralToken_,
         address cashToken_
     ) {
         if (admin == address(0)) revert ZeroAdmin();
         if ((complianceRegistry = complianceRegistry_) == address(0)) revert ZeroComplianceRegistry();
         if ((collateralOracle = collateralOracle_) == address(0)) revert ZeroPriceOracle();
+        if ((maxPriceAge = maxPriceAge_) == 0) revert ZeroMaxPriceAge();
         if ((collateralToken = collateralToken_) == address(0)) revert ZeroCollateralToken();
         if ((cashToken = cashToken_) == address(0)) revert ZeroCashToken();
 
@@ -344,8 +350,9 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, AccessControl {
 
     /// @inheritdoc IRepoDvP
     function getCollateralPrice() public view returns (uint256) {
-        (, int256 price, , , ) = ICollateralPriceOracle(collateralOracle).latestRoundData();
+        (, int256 price, , uint256 updatedAt, ) = ICollateralPriceOracle(collateralOracle).latestRoundData();
         if (price <= 0) revert ICollateralPriceOracle.InvalidPrice();
+        if (block.timestamp - updatedAt > maxPriceAge) revert StalePrice(updatedAt, block.timestamp);
         return uint256(price);
     }
 

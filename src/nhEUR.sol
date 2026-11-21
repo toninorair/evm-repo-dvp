@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import {ERC20Permit} from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
-import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {Pausable} from "@openzeppelin/contracts/utils/Pausable.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Permit.sol";
+import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
+import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
-import {IComplianceRegistry} from "./interfaces/IComplianceRegistry.sol";
-import {InhEUR} from "./interfaces/InhEUR.sol";
+import { IComplianceRegistry } from "./interfaces/IComplianceRegistry.sol";
+import { InhEUR } from "./interfaces/InhEUR.sol";
 
 /// @title  nhEUR
 /// @notice Nordhaven Tokenised Euro Deposit (nhEUR).
@@ -38,10 +38,12 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
     /// @param  treasury            Address granted TREASURY_ROLE (mint/burn authority).
     /// @param  compliance          Address granted COMPLIANCE_ROLE (freeze/pause authority).
     /// @param  complianceRegistry_ Address of the initial compliance registry.
-    constructor(address admin, address treasury, address compliance, address complianceRegistry_)
-        ERC20("Nordhaven EUR Deposit", "nhEUR")
-        ERC20Permit("Nordhaven EUR Deposit")
-    {
+    constructor(
+        address admin,
+        address treasury,
+        address compliance,
+        address complianceRegistry_
+    ) ERC20("Nordhaven EUR Deposit", "nhEUR") ERC20Permit("Nordhaven EUR Deposit") {
         if (admin == address(0)) revert ZeroAdmin();
         if (treasury == address(0)) revert ZeroTreasury();
         if (compliance == address(0)) revert ZeroCompliance();

@@ -391,4 +391,11 @@ contract RepoDvPTest is RepoTestBase {
         vm.expectRevert(IRepoDvP.MarginSufficient.selector);
         repoDvP.marginCall(repoId);
     }
+
+    function test_GetCollateralPrice_RevertsWhenStale() public {
+        uint256 updatedAt = block.timestamp;
+        vm.warp(block.timestamp + MAX_PRICE_AGE + 1);
+        vm.expectRevert(abi.encodeWithSelector(IRepoDvP.StalePrice.selector, updatedAt, block.timestamp));
+        repoDvP.getCollateralPrice();
+    }
 }

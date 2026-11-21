@@ -67,6 +67,8 @@ interface IRepoDvP {
     error ZeroAdmin();
     error ZeroComplianceRegistry();
     error ZeroPriceOracle();
+    error ZeroMaxPriceAge();
+    error StalePrice(uint256 updatedAt, uint256 currentTimestamp);
     error ZeroCollateralToken();
     error ZeroCashToken();
     error ZeroAmount();

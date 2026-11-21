@@ -62,8 +62,8 @@
  */
 pragma solidity 0.8.34;
 
-import {IClaimIssuer} from "./IClaimIssuer.sol";
-import {IIdentity} from "./IIdentity.sol";
+import { IClaimIssuer } from "./IClaimIssuer.sol";
+import { IIdentity } from "./IIdentity.sol";
 
 library ERC3643EventsLib {
     // ============================================
@@ -71,7 +71,11 @@ library ERC3643EventsLib {
     // ============================================
 
     event UpdatedTokenInformation(
-        string _newName, string _newSymbol, uint8 _newDecimals, string _newVersion, address indexed _newOnchainID
+        string _newName,
+        string _newSymbol,
+        uint8 _newDecimals,
+        string _newVersion,
+        address indexed _newOnchainID
     );
 
     event IdentityRegistryAdded(address indexed _identityRegistry);

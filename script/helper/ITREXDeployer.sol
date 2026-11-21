@@ -27,7 +27,8 @@ interface ITREXDeployer {
         address issuer,
         string memory tokenName,
         string memory tokenSymbol,
-        uint8 decimals
+        uint8 decimals,
+        address navOracle
     ) external returns (TREXSuite memory suite);
 
     function deployBondSuite(

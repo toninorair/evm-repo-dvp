@@ -48,7 +48,7 @@ This repository delivers a testnet-ready, production-grade Proof of Concept (POC
 
 - **Collateral Leg (`nhBOND NAV`):** Built strictly on the official **ERC-3643 (T-REX)** token standard (`IERC3643`), representing European sovereign bond fund units valued at Net Asset Value (NAV). Enforces on-chain identity verification (`IdentityRegistry` / `ONCHAINID`), modular transfer rules (`ModularCompliance`), partial/wallet freezing, and regulatory forced transfers.
 - **Cash Leg (`nhEUR`):** Structured as an institutional **Tokenised Commercial Bank Deposit** strictly modeled after **J.P. Morgan's JPM Coin (`JPMD`)** (deployed at `0xb2906cCED1b2c8330480414CeFA1eb52bDBd73A3` on Ethereum Mainnet). Incorporates a 4-tier banking control model and EIP-2612 gasless permits for 1-transaction atomic DvP settlement.
-- **Real Fund NAV Oracle (`nhNAVOracle`):** Modeled after institutional tokenized money market funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink's `AggregatorV3Interface` with calculation agent attestations, a 24-hour staleness heartbeat, and a 50 bps daily deviation circuit breaker.
+- **Real Fund NAV Oracle (`nhNAVOracle`):** Modeled after institutional tokenized money market funds (**BlackRock BUIDL**, **Ondo OUSG**, and **VanEck VBILL**), exposing Chainlink's `AggregatorV3Interface` with calculation agent attestations. Staleness is enforced by the consumer: `RepoDvP` rejects prices older than `maxPriceAge`.
 - **Settlement & Escrow (`RepoDvP`):** Functions as an automated decentralized **Tri-Party Collateral Agent** under the EU Financial Collateral Directive (Directive 2002/47/EC), eliminating counterparty rehypothecation and settlement failure risk.
 
 ---

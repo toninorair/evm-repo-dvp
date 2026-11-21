@@ -16,13 +16,13 @@ Smart contracts and settlement console for tokenised EUR sovereign bond repurcha
 
 ## Contracts & Key Assumptions
 
-| Contract                                 | Standard / Model          | Purpose                                                                 | Sepolia Address         |
-| :--------------------------------------- | :------------------------ | :---------------------------------------------------------------------- | :---------------------- |
-| [`RepoDvP.sol`](src/RepoDvP.sol)         | Bilateral Repo DvP        | Atomic DvP/RvP, Actual/360 interest, margin calls, default netting      | `TBD_ON_SEPOLIA_DEPLOY` |
-| [`nhBOND.sol`](src/nhBOND.sol)           | Official ERC-3643 (T-REX) | Tokenised EUR sovereign bond, KYC-gated transfers                       | `TBD_ON_SEPOLIA_DEPLOY` |
-| [`nhEUR.sol`](src/nhEUR.sol)             | Tokenised Bank Deposit    | Permissioned EUR cash leg (JPM Coin model) sharing `IdentityRegistry`   | `TBD_ON_SEPOLIA_DEPLOY` |
-| [`nhNAVOracle.sol`](src/nhNAVOracle.sol) | Chainlink `AggregatorV3`  | Calculation-agent EUR NAV feed (8 decimals)                             | `TBD_ON_SEPOLIA_DEPLOY` |
-| `IdentityRegistry`                       | Official ERC-3643 (T-REX) | On-chain `ONCHAINID` verification enforced by both tokens and `RepoDvP` | `TBD_ON_SEPOLIA_DEPLOY` |
+| Contract                                 | Standard / Model          | Purpose                                                                 | Sepolia Address                                                                                                                 |
+| :--------------------------------------- | :------------------------ | :---------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------ |
+| [`RepoDvP.sol`](src/RepoDvP.sol)         | Bilateral Repo DvP        | Atomic DvP/RvP, Actual/360 interest, margin calls, default netting      | [`0x9b7d0BaE4acDE189DAe646FEfbafFd9842E39233`](https://sepolia.etherscan.io/address/0x9b7d0BaE4acDE189DAe646FEfbafFd9842E39233) |
+| [`nhBOND.sol`](src/nhBOND.sol)           | Official ERC-3643 (T-REX) | Tokenised EUR sovereign bond, KYC-gated transfers                       | [`0xF13e3EDCBA568e1A3DBfce0C9749A7058205b09C`](https://sepolia.etherscan.io/address/0xF13e3EDCBA568e1A3DBfce0C9749A7058205b09C) |
+| [`nhEUR.sol`](src/nhEUR.sol)             | Tokenised Bank Deposit    | Permissioned EUR cash leg (JPM Coin model) sharing `IdentityRegistry`   | [`0xeEe12a05026bB38Ddb042e9DC16A3120EB637584`](https://sepolia.etherscan.io/address/0xeEe12a05026bB38Ddb042e9DC16A3120EB637584) |
+| [`nhNAVOracle.sol`](src/nhNAVOracle.sol) | Chainlink `AggregatorV3`  | Calculation-agent EUR NAV feed (8 decimals)                             | [`0x8fa64250d92e397249bEacFb335B73016fCEC1be`](https://sepolia.etherscan.io/address/0x8fa64250d92e397249bEacFb335B73016fCEC1be) |
+| `IdentityRegistry`                       | Official ERC-3643 (T-REX) | On-chain `ONCHAINID` verification enforced by both tokens and `RepoDvP` | [`0xEBC4c98BD77287090Bf2A29357BF846f61eaB98B`](https://sepolia.etherscan.io/address/0xEBC4c98BD77287090Bf2A29357BF846f61eaB98B) |
 
 **Three core architectural calls:**
 

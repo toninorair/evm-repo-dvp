@@ -55,7 +55,7 @@ export function Header({ route }: { route: string }) {
   return (
     <header style={{ borderBottom: '1px solid var(--line)' }}>
       <div className="wrap" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, paddingTop: 18, paddingBottom: 12 }}>
-        <a href={href('/')} style={{ display: 'flex', alignItems: 'center', gap: 14, color: 'var(--ink)', textDecoration: 'none' }}>
+        <a href="#/" style={{ display: 'flex', alignItems: 'center', gap: 14, color: 'var(--ink)', textDecoration: 'none' }} title="Back to Session Plan">
           <Mark size={44} />
           <span style={{ fontFamily: 'var(--display)', fontSize: 30 }}>Ethereum Institutional</span>
           <span style={{ borderLeft: '1px solid var(--line)', paddingLeft: 16, fontSize: 18, color: 'var(--ok)' }}>

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: CC0-1.0
 pragma solidity 0.8.34;
 
-import {IIdentity} from "./IIdentity.sol";
+import { IIdentity } from "./IIdentity.sol";
 
 /// @title IClaimIssuer
 /// @notice Official ONCHAINID Claim Issuer interface

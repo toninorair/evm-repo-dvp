@@ -1,17 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {Test} from "forge-std/Test.sol";
-import {RepoDvP} from "../../src/RepoDvP.sol";
-import {nhEUR} from "../../src/nhEUR.sol";
-import {InhBOND} from "../../src/interfaces/InhBOND.sol";
-import {ITestBond} from "../interfaces/ITestBond.sol";
-import {IRepoTypes} from "../../src/interfaces/IRepoTypes.sol";
+import { Test } from "forge-std/Test.sol";
+import { RepoDvP } from "../../src/RepoDvP.sol";
+import { nhEUR } from "../../src/nhEUR.sol";
+import { ITestBond } from "../interfaces/ITestBond.sol";
 
 /// @title  RepoHandler
 /// @notice Fuzz invariant handler generating bounded, valid repo actions.
 /// @author Ethereum Institutional / Nordhaven Bank
-contract RepoHandler is Test, IRepoTypes {
+contract RepoHandler is Test {
     RepoDvP internal repoDvP;
     nhEUR internal cashToken;
     ITestBond internal bondToken;
@@ -36,12 +34,26 @@ contract RepoHandler is Test, IRepoTypes {
         treasury = _treasury;
     }
 
-    function createAndOpenRepo(uint256 cashAmount, uint32 rateBps, uint32 tenorSeconds) external {
+    function createAndOpenRepo(uint256 cashAmount, uint32 rateBps, uint32 termSeconds) external {
         cashAmount = bound(cashAmount, 100_000 ether, 5_000_000 ether);
         rateBps = uint32(bound(rateBps, 50, 1_000));
-        tenorSeconds = uint32(bound(tenorSeconds, 1 days, 30 days));
+        termSeconds = uint32(bound(termSeconds, 1 days, 30 days));
 
-        uint256 collateral = (cashAmount * 105) / 100; // 5% buffer
+        vm.prank(bankA);
+        uint256 repoId = repoDvP.proposeRepo(
+            bankB,
+            cashAmount,
+            rateBps,
+            200,
+            100,
+            termSeconds,
+            2 hours,
+            type(uint256).max,
+            uint40(block.timestamp + 1 days)
+        );
+        // acceptRepo pulls principal × (1 + 2% initial margin) at the current price.
+        uint256 price = repoDvP.getCollateralPrice();
+        uint256 collateral = (((cashAmount * 10_200) / 10_000) * 1e8 + price - 1) / price;
 
         vm.prank(treasury);
         bondToken.mint(bankA, collateral);
@@ -49,12 +61,8 @@ contract RepoHandler is Test, IRepoTypes {
         vm.prank(treasury);
         cashToken.mint(bankB, cashAmount, "TARGET2-CREDIT");
 
-        vm.startPrank(bankA);
+        vm.prank(bankA);
         bondToken.approve(address(repoDvP), collateral);
-        uint256 repoId = repoDvP.proposeRepo(
-            bankB, address(bondToken), address(cashToken), collateral, cashAmount, rateBps, tenorSeconds, 200, true
-        );
-        vm.stopPrank();
 
         vm.startPrank(bankB);
         cashToken.approve(address(repoDvP), cashAmount);
@@ -67,12 +75,13 @@ contract RepoHandler is Test, IRepoTypes {
         if (count == 0) return;
 
         repoId = bound(repoId, 1, count);
-        (, RepoState memory state) = repoDvP.getRepo(repoId);
-        if (state.status != RepoStatus.Active) return;
+        RepoDvP.RepoState memory state = _getState(repoId);
+        if (state.status != RepoDvP.RepoStatus.Active) return;
 
         vm.warp(block.timestamp + 1 days);
 
-        (, uint256 interest, uint256 totalRepurchasePrice) = repoDvP.calculateRepurchasePrice(repoId);
+        uint256 interest = repoDvP.getRepoInterest(repoId);
+        uint256 totalRepurchasePrice = repoDvP.getCurrentRepurchasePrice(repoId);
 
         vm.prank(treasury);
         cashToken.mint(bankA, interest, "INTEREST-TOPUP");
@@ -81,5 +90,18 @@ contract RepoHandler is Test, IRepoTypes {
         cashToken.approve(address(repoDvP), totalRepurchasePrice);
         repoDvP.settleRepo(repoId);
         vm.stopPrank();
+    }
+
+    /// @dev Reads a repo's state from the public `states` mapping getter.
+    function _getState(uint256 repoId) internal view returns (RepoDvP.RepoState memory s) {
+        (s.status, s.startTime, s.maturity, s.collateralAmount, s.cureDeadline) = repoDvP.states(repoId);
+    }
+
+    /// @dev Reads a repo's terms from the public `orders` mapping getter.
+    function _getOrder(uint256 repoId) internal view returns (RepoDvP.RepoOrder memory o) {
+        // A static struct ABI-encodes like the getter's flat tuple, so decode it directly (avoids stack-too-deep).
+        (bool ok, bytes memory data) = address(repoDvP).staticcall(abi.encodeCall(repoDvP.orders, (repoId)));
+        require(ok, "orders() failed");
+        o = abi.decode(data, (RepoDvP.RepoOrder));
     }
 }

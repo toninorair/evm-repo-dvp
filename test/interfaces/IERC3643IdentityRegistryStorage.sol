@@ -37,7 +37,7 @@
 //                                        :#%%=
 //
 pragma solidity 0.8.34;
-import {IIdentity} from "./IIdentity.sol";
+import { IIdentity } from "./IIdentity.sol";
 
 interface IERC3643IdentityRegistryStorage {
     /// functions

@@ -1,46 +1,59 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {RepoTestBase} from "../utils/RepoTestBase.sol";
-import {IRepoDvP} from "../../src/interfaces/IRepoDvP.sol";
+import { RepoDvP } from "../../src/RepoDvP.sol";
+import { RepoTestBase } from "../utils/RepoTestBase.sol";
+import { IRepoDvP } from "../../src/interfaces/IRepoDvP.sol";
 
 /// @title  RepoDvPTest
 /// @notice Unit tests for RepoDvP settlement engine covering DvP, RvP, and EIP-712 orders.
 /// @author Ethereum Institutional / Nordhaven Bank
 contract RepoDvPTest is RepoTestBase {
     uint256 internal constant CASH_PRINCIPAL = 10_000_000 ether; // €10,000,000
-    uint256 internal constant COLLATERAL_AMOUNT = 105_000 ether; // 105,000 bonds (€10.5M value at €100 par)
+    // Independently computed for the terms below at €100.00:
+    //   interest (full term) = 10,000,000e18 × 350 × 604,800 / 311,040,000,000 = 6,805.555…e18 (rounded down)
+    //   initial requirement  = principal × 10,200 / 10,000 = 10,200,000e18 (interest is not pre-collateralised)
+    //   collateralAmount     = ceilDiv(10,200,000e18 × 1e8, 100e8) = 102,000e18
+    uint256 internal constant EXPECTED_INTEREST = 6_805_555555555555555555;
+    uint256 internal constant EXPECTED_REQUIRED_VALUE = 10_200_000 ether;
+    uint256 internal constant COLLATERAL_AMOUNT = 102_000 ether;
+    uint256 internal constant MAX_COLLATERAL_AMOUNT = 103_000 ether; // borrower's cap (~0.9% price slippage)
     uint32 internal constant REPO_RATE_BPS = 350; // 3.50%
-    uint32 internal constant TENOR_SECONDS = 7 days; // 604,800 seconds
-    uint32 internal constant HAIRCUT_BPS = 200; // 2.00% (requires €10.2M value)
+    uint32 internal constant TERM_SECONDS = 7 days; // 604,800 seconds
+    uint32 internal constant CURE_PERIOD_SECONDS = 2 hours;
+    uint32 internal constant MAINTENANCE_MARGIN_BPS = 100; // 1.00%
+    uint32 internal constant INITIAL_MARGIN_BPS = 200; // 2.00% over the principal
 
     function test_ProposeRepo_And_Cancel() public {
         vm.startPrank(bankA);
         uint256 repoId = repoDvP.proposeRepo(
             bankB,
-            address(bondToken),
-            address(cashToken),
-            COLLATERAL_AMOUNT,
             CASH_PRINCIPAL,
             REPO_RATE_BPS,
-            TENOR_SECONDS,
-            HAIRCUT_BPS,
-            true // Bank A is borrower
+            INITIAL_MARGIN_BPS,
+            MAINTENANCE_MARGIN_BPS,
+            TERM_SECONDS,
+            CURE_PERIOD_SECONDS,
+            MAX_COLLATERAL_AMOUNT,
+            uint40(block.timestamp + 1 days)
         );
         vm.stopPrank();
 
         assertEq(repoId, 1);
-        (RepoTerms memory terms, RepoState memory state) = repoDvP.getRepo(repoId);
-        assertEq(terms.borrower, bankA);
-        assertEq(terms.lender, bankB);
-        assertEq(uint8(state.status), uint8(RepoStatus.Proposed));
+        RepoDvP.RepoOrder memory order = _getOrder(repoId);
+        RepoDvP.RepoState memory state = _getState(repoId);
+        assertEq(order.borrower, bankA);
+        assertEq(order.lender, bankB);
+        assertEq(order.maxCollateralAmount, MAX_COLLATERAL_AMOUNT);
+        assertEq(state.collateralAmount, 0); // nothing sized or moved until acceptance
+        assertEq(uint8(state.status), uint8(RepoDvP.RepoStatus.Proposed));
 
         // Bank A cancels
         vm.prank(bankA);
-        repoDvP.cancelProposal(repoId);
+        repoDvP.cancelRepo(repoId);
 
-        (, state) = repoDvP.getRepo(repoId);
-        assertEq(uint8(state.status), uint8(RepoStatus.Cancelled));
+        state = _getState(repoId);
+        assertEq(uint8(state.status), uint8(RepoDvP.RepoStatus.Cancelled));
     }
 
     function test_AtomicDvP_OpeningLeg() public {
@@ -48,14 +61,14 @@ contract RepoDvPTest is RepoTestBase {
         vm.prank(bankA);
         uint256 repoId = repoDvP.proposeRepo(
             bankB,
-            address(bondToken),
-            address(cashToken),
-            COLLATERAL_AMOUNT,
             CASH_PRINCIPAL,
             REPO_RATE_BPS,
-            TENOR_SECONDS,
-            HAIRCUT_BPS,
-            true
+            INITIAL_MARGIN_BPS,
+            MAINTENANCE_MARGIN_BPS,
+            TERM_SECONDS,
+            CURE_PERIOD_SECONDS,
+            MAX_COLLATERAL_AMOUNT,
+            uint40(block.timestamp + 1 days)
         );
 
         // 2. Both counterparties approve RepoDvP
@@ -87,10 +100,10 @@ contract RepoDvPTest is RepoTestBase {
         assertEq(bondToken.balanceOf(address(repoDvP)), COLLATERAL_AMOUNT);
         assertEq(cashToken.balanceOf(address(repoDvP)), 0);
 
-        (, RepoState memory state) = repoDvP.getRepo(repoId);
-        assertEq(uint8(state.status), uint8(RepoStatus.Active));
+        RepoDvP.RepoState memory state = _getState(repoId);
+        assertEq(uint8(state.status), uint8(RepoDvP.RepoStatus.Active));
         assertEq(state.startTime, block.timestamp);
-        assertEq(state.maturity, block.timestamp + TENOR_SECONDS);
+        assertEq(state.maturity, block.timestamp + TERM_SECONDS);
     }
 
     function test_ClosingLeg_RvP_Settlement_AtMaturity() public {
@@ -98,14 +111,14 @@ contract RepoDvPTest is RepoTestBase {
         vm.prank(bankA);
         uint256 repoId = repoDvP.proposeRepo(
             bankB,
-            address(bondToken),
-            address(cashToken),
-            COLLATERAL_AMOUNT,
             CASH_PRINCIPAL,
             REPO_RATE_BPS,
-            TENOR_SECONDS,
-            HAIRCUT_BPS,
-            true
+            INITIAL_MARGIN_BPS,
+            MAINTENANCE_MARGIN_BPS,
+            TERM_SECONDS,
+            CURE_PERIOD_SECONDS,
+            MAX_COLLATERAL_AMOUNT,
+            uint40(block.timestamp + 1 days)
         );
 
         vm.prank(bankA);
@@ -116,10 +129,12 @@ contract RepoDvPTest is RepoTestBase {
         repoDvP.acceptRepo(repoId);
 
         // Fast-forward to maturity (7 days)
-        vm.warp(block.timestamp + TENOR_SECONDS);
+        vm.warp(block.timestamp + TERM_SECONDS);
 
-        // Expected interest: (10,000,000 * 350 * 604,800) / 311,040,000,000 = 68,055.555555555555555555 EUR
-        (uint256 principal, uint256 interest, uint256 totalRepurchasePrice) = repoDvP.calculateRepurchasePrice(repoId);
+        // Expected interest: (10,000,000 * 350 * 604,800) / 311,040,000,000 = 6,805.555555555555555555 EUR
+        uint256 principal = _getOrder(repoId).borrowAmount;
+        uint256 interest = repoDvP.getRepoInterest(repoId);
+        uint256 totalRepurchasePrice = repoDvP.getCurrentRepurchasePrice(repoId);
         assertEq(principal, CASH_PRINCIPAL);
         assertGt(interest, 0);
         assertEq(totalRepurchasePrice, principal + interest);
@@ -145,37 +160,242 @@ contract RepoDvPTest is RepoTestBase {
         assertEq(bondToken.balanceOf(address(repoDvP)), 0);
         assertEq(cashToken.balanceOf(address(repoDvP)), 0);
 
-        (, RepoState memory state) = repoDvP.getRepo(repoId);
-        assertEq(uint8(state.status), uint8(RepoStatus.Settled));
+        RepoDvP.RepoState memory state = _getState(repoId);
+        assertEq(uint8(state.status), uint8(RepoDvP.RepoStatus.Settled));
     }
 
-    function test_OpenRFQ_CounterpartyAddressZero() public {
-        // Bank B proposes an open lending quote (counterparty == address(0))
-        vm.prank(bankB);
-        uint256 repoId = repoDvP.proposeRepo(
-            address(0), // Open to ANY allowlisted bank
-            address(bondToken),
-            address(cashToken),
-            COLLATERAL_AMOUNT,
+    function test_ProposeRepo_RevertsOnZeroLender() public {
+        vm.prank(bankA);
+        vm.expectRevert(IRepoDvP.InvalidLender.selector);
+        repoDvP.proposeRepo(
+            address(0),
             CASH_PRINCIPAL,
             REPO_RATE_BPS,
-            TENOR_SECONDS,
-            HAIRCUT_BPS,
-            false // Bank B is lender
+            INITIAL_MARGIN_BPS,
+            MAINTENANCE_MARGIN_BPS,
+            TERM_SECONDS,
+            CURE_PERIOD_SECONDS,
+            MAX_COLLATERAL_AMOUNT,
+            uint40(block.timestamp + 1 days)
         );
+    }
 
+    function test_ProposeRepo_RevertsWhenBorrowerIsLender() public {
+        vm.prank(bankA);
+        vm.expectRevert(IRepoDvP.InvalidLender.selector);
+        repoDvP.proposeRepo(
+            bankA,
+            CASH_PRINCIPAL,
+            REPO_RATE_BPS,
+            INITIAL_MARGIN_BPS,
+            MAINTENANCE_MARGIN_BPS,
+            TERM_SECONDS,
+            CURE_PERIOD_SECONDS,
+            MAX_COLLATERAL_AMOUNT,
+            uint40(block.timestamp + 1 days)
+        );
+    }
+
+    function _propose(uint40 acceptDeadline) internal returns (uint256) {
+        vm.prank(bankA);
+        return
+            repoDvP.proposeRepo(
+                bankB,
+                CASH_PRINCIPAL,
+                REPO_RATE_BPS,
+                INITIAL_MARGIN_BPS,
+                MAINTENANCE_MARGIN_BPS,
+                TERM_SECONDS,
+                CURE_PERIOD_SECONDS,
+                MAX_COLLATERAL_AMOUNT,
+                acceptDeadline
+            );
+    }
+
+    function test_AcceptRepo_RevertsWhenBorrowerAccepts() public {
+        uint256 repoId = _propose(uint40(block.timestamp + 1 days));
+
+        // Lender has a standing allowance; the borrower must not be able to use it.
+        vm.prank(bankB);
+        cashToken.approve(address(repoDvP), type(uint256).max);
         vm.prank(bankA);
         bondToken.approve(address(repoDvP), COLLATERAL_AMOUNT);
-        vm.prank(bankB);
-        cashToken.approve(address(repoDvP), CASH_PRINCIPAL);
 
-        // Bank A (borrower) accepts the open quote
         vm.prank(bankA);
+        vm.expectRevert(IRepoDvP.Unauthorized.selector);
+        repoDvP.acceptRepo(repoId);
+    }
+
+    function test_AcceptRepo_RevertsAfterDeadline() public {
+        uint40 deadline = uint40(block.timestamp + 1 hours);
+        uint256 repoId = _propose(deadline);
+
+        vm.warp(uint256(deadline) + 1);
+        vm.prank(bankB);
+        vm.expectRevert(abi.encodeWithSelector(IRepoDvP.ProposalExpired.selector, deadline, block.timestamp));
         repoDvP.acceptRepo(repoId);
 
-        (RepoTerms memory terms, RepoState memory state) = repoDvP.getRepo(repoId);
-        assertEq(terms.borrower, bankA);
-        assertEq(terms.lender, bankB);
-        assertEq(uint8(state.status), uint8(RepoStatus.Active));
+        // Expired proposals can still be cancelled by the borrower.
+        vm.prank(bankA);
+        repoDvP.cancelRepo(repoId);
+    }
+
+    function test_CancelRepo_RevertsForLender() public {
+        uint256 repoId = _propose(uint40(block.timestamp + 1 days));
+        vm.prank(bankB);
+        vm.expectRevert(IRepoDvP.Unauthorized.selector);
+        repoDvP.cancelRepo(repoId);
+    }
+
+    function test_ProposeRepo_RevertsOnPastDeadline() public {
+        vm.expectRevert(IRepoDvP.AcceptDeadlineInvalid.selector);
+        _propose(uint40(block.timestamp));
+    }
+
+    /* ============ Collateral sizing ============ */
+
+    function _approveAndAccept(uint256 repoId) internal {
+        vm.prank(bankA);
+        bondToken.approve(address(repoDvP), MAX_COLLATERAL_AMOUNT);
+        vm.prank(bankB);
+        cashToken.approve(address(repoDvP), CASH_PRINCIPAL);
+        vm.prank(bankB);
+        repoDvP.acceptRepo(repoId);
+    }
+
+    function test_GetRepoInterest_Actual360() public {
+        uint256 repoId = _propose(uint40(block.timestamp + 1 days));
+        _approveAndAccept(repoId);
+        assertEq(repoDvP.getRepoInterest(repoId), 0);
+
+        vm.warp(block.timestamp + TERM_SECONDS);
+        assertEq(repoDvP.getRepoInterest(repoId), EXPECTED_INTEREST);
+    }
+
+    function test_GetCollateralPrice_ReadsOracle() public {
+        assertEq(repoDvP.getCollateralPrice(), uint256(INITIAL_BOND_PRICE));
+
+        vm.prank(admin);
+        oracle.updateNAV(99_50000000);
+        assertEq(repoDvP.getCollateralPrice(), 99_50000000);
+    }
+
+    function test_GetRequiredCollateralAmount_MaintenanceBeforeAccrual() public {
+        uint256 repoId = _propose(uint40(block.timestamp + 1 days));
+        // Before acceptance no interest accrues: principal × 10,100 / 10,000 at €100 = 101,000 bonds.
+        assertEq(repoDvP.getRequiredCollateralAmount(repoId), 101_000 ether);
+    }
+
+    function test_AcceptRepo_PullsExactQuotedCollateral() public {
+        uint256 repoId = _propose(uint40(block.timestamp + 1 days));
+        uint256 bankABondBefore = bondToken.balanceOf(bankA);
+
+        _approveAndAccept(repoId);
+
+        RepoDvP.RepoState memory state = _getState(repoId);
+        assertEq(state.collateralAmount, COLLATERAL_AMOUNT);
+        assertEq(bondToken.balanceOf(bankA), bankABondBefore - COLLATERAL_AMOUNT);
+        assertEq(bondToken.balanceOf(address(repoDvP)), COLLATERAL_AMOUNT);
+    }
+
+    function test_AcceptRepo_ResizesCollateralWhenPriceDropsWithinCap() public {
+        uint256 repoId = _propose(uint40(block.timestamp + 1 days));
+
+        int256 newPrice = 99_50000000; // €99.50
+        vm.prank(admin);
+        oracle.updateNAV(newPrice);
+
+        _approveAndAccept(repoId);
+
+        // ceilDiv(10,200,000e18 × 1e8, 99.5e8)
+        uint256 expected = (EXPECTED_REQUIRED_VALUE * 1e8 + uint256(newPrice) - 1) / uint256(newPrice);
+        RepoDvP.RepoState memory state = _getState(repoId);
+        assertEq(state.collateralAmount, expected);
+        assertGt(expected, COLLATERAL_AMOUNT);
+        assertLe(expected, MAX_COLLATERAL_AMOUNT);
+    }
+
+    function test_AcceptRepo_RevertsWhenPriceDropExceedsCap() public {
+        uint256 repoId = _propose(uint40(block.timestamp + 1 days));
+
+        int256 newPrice = 99_00000000; // €99.00 -> needs ~103,030 bonds > 103,000 cap
+        vm.prank(admin);
+        oracle.updateNAV(newPrice);
+
+        uint256 required = (EXPECTED_REQUIRED_VALUE * 1e8 + uint256(newPrice) - 1) / uint256(newPrice);
+        vm.prank(bankB);
+        vm.expectRevert(abi.encodeWithSelector(IRepoDvP.CollateralAboveCap.selector, required, MAX_COLLATERAL_AMOUNT));
+        repoDvP.acceptRepo(repoId);
+    }
+
+    function test_ProposeRepo_RevertsOnZeroCollateralCap() public {
+        vm.prank(bankA);
+        vm.expectRevert(IRepoDvP.ZeroAmount.selector);
+        repoDvP.proposeRepo(
+            bankB,
+            CASH_PRINCIPAL,
+            REPO_RATE_BPS,
+            INITIAL_MARGIN_BPS,
+            MAINTENANCE_MARGIN_BPS,
+            TERM_SECONDS,
+            CURE_PERIOD_SECONDS,
+            0,
+            uint40(block.timestamp + 1 days)
+        );
+    }
+
+    function test_ProposeRepo_RevertsWhenMaintenanceExceedsInitialMargin() public {
+        vm.prank(bankA);
+        vm.expectRevert(IRepoDvP.MaintenanceMarginInvalid.selector);
+        repoDvP.proposeRepo(
+            bankB,
+            CASH_PRINCIPAL,
+            REPO_RATE_BPS,
+            INITIAL_MARGIN_BPS,
+            INITIAL_MARGIN_BPS, // equal is rejected: maintenance must be strictly below initial
+            TERM_SECONDS,
+            CURE_PERIOD_SECONDS,
+            MAX_COLLATERAL_AMOUNT,
+            uint40(block.timestamp + 1 days)
+        );
+    }
+
+    function test_ProposeRepo_RevertsOnExcessiveInitialMargin() public {
+        uint32 tooHigh = repoDvP.MAX_INITIAL_MARGIN_BPS() + 1;
+        vm.prank(bankA);
+        vm.expectRevert(IRepoDvP.InitialMarginInvalid.selector);
+        repoDvP.proposeRepo(
+            bankB,
+            CASH_PRINCIPAL,
+            REPO_RATE_BPS,
+            tooHigh,
+            MAINTENANCE_MARGIN_BPS,
+            TERM_SECONDS,
+            CURE_PERIOD_SECONDS,
+            MAX_COLLATERAL_AMOUNT,
+            uint40(block.timestamp + 1 days)
+        );
+    }
+
+    function test_OpenedRepo_IsHealthyThroughoutTermAtUnchangedPrice() public {
+        uint256 repoId = _propose(uint40(block.timestamp + 1 days));
+        _approveAndAccept(repoId);
+
+        bool healthyAtOpen = repoDvP.isMarginHealthy(repoId);
+        assertTrue(healthyAtOpen);
+
+        vm.warp(block.timestamp + TERM_SECONDS);
+        bool healthyAtMaturity = repoDvP.isMarginHealthy(repoId);
+        assertTrue(healthyAtMaturity);
+
+        vm.expectRevert(IRepoDvP.MarginSufficient.selector);
+        repoDvP.marginCall(repoId);
+    }
+
+    function test_GetCollateralPrice_RevertsWhenStale() public {
+        uint256 updatedAt = block.timestamp;
+        vm.warp(block.timestamp + MAX_PRICE_AGE + 1);
+        vm.expectRevert(abi.encodeWithSelector(IRepoDvP.StalePrice.selector, updatedAt, block.timestamp));
+        repoDvP.getCollateralPrice();
     }
 }

@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {IIdentity} from "../interfaces/IIdentity.sol";
+import { IIdentity } from "../interfaces/IIdentity.sol";
 
 /// @title MockIdentity
 /// @notice Lightweight ONCHAINID mock contract for institutional counterparty testing.
@@ -47,11 +47,14 @@ contract MockIdentity is IIdentity {
         return purpose == 1;
     }
 
-    function addClaim(uint256, uint256, address, bytes calldata, bytes calldata, string calldata)
-        external
-        pure
-        returns (bytes32)
-    {
+    function addClaim(
+        uint256,
+        uint256,
+        address,
+        bytes calldata,
+        bytes calldata,
+        string calldata
+    ) external pure returns (bytes32) {
         return bytes32(0);
     }
 
@@ -59,7 +62,9 @@ contract MockIdentity is IIdentity {
         return true;
     }
 
-    function getClaim(bytes32 claimId)
+    function getClaim(
+        bytes32
+    )
         external
         view
         returns (

@@ -39,10 +39,10 @@
 
 pragma solidity 0.8.34;
 
-import {IERC3643Compliance} from "./IERC3643Compliance.sol";
-import {IERC3643IdentityRegistry} from "./IERC3643IdentityRegistry.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {IERC20Metadata} from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
+import { IERC3643Compliance } from "./IERC3643Compliance.sol";
+import { IERC3643IdentityRegistry } from "./IERC3643IdentityRegistry.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 interface IERC3643 is IERC20, IERC20Metadata {
     /// Functions
@@ -249,9 +249,11 @@ interface IERC3643 is IERC20, IERC20Metadata {
      *
      * @return A boolean value indicating whether the recovery process was successful.
      */
-    function recoveryAddress(address _lostWallet, address _newWallet, address _investorOnchainID)
-        external
-        returns (bool);
+    function recoveryAddress(
+        address _lostWallet,
+        address _newWallet,
+        address _investorOnchainID
+    ) external returns (bool);
 
     /// Batch Actions
 
@@ -284,8 +286,11 @@ interface IERC3643 is IERC20, IERC20Metadata {
      *  To execute this function, the calling agent must not be restricted from initiating forced transfer.
      *  If the agent is restricted from this capability, the function call will fail.
      */
-    function batchForcedTransfer(address[] calldata _fromList, address[] calldata _toList, uint256[] calldata _amounts)
-        external;
+    function batchForcedTransfer(
+        address[] calldata _fromList,
+        address[] calldata _toList,
+        uint256[] calldata _amounts
+    ) external;
 
     /**
      *  @dev Initiates minting of tokens in batch.

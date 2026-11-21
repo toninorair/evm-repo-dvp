@@ -37,7 +37,7 @@
 //                                        :#%%=
 //
 pragma solidity 0.8.34;
-import {IClaimIssuer} from "./IClaimIssuer.sol";
+import { IClaimIssuer } from "./IClaimIssuer.sol";
 
 interface IERC3643TrustedIssuersRegistry {
     // Functions

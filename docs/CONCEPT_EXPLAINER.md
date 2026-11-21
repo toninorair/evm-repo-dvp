@@ -27,6 +27,7 @@
 ```
 
 ### The Trading Desk Pain Point:
+
 In volatile macro environments, our trading desk cannot rebalance liquidity or access collateral during evening hours, weekends, or cross-border holidays. The absence of true Delivery-versus-Payment (DvP Model 1) creates intra-settlement credit exposure, forcing Nordhaven to maintain substantial capital buffers and incur operational reconciliation overhead.
 
 ---
@@ -56,6 +57,7 @@ In volatile macro environments, our trading desk cannot rebalance liquidity or a
 ```
 
 ### Core Architecture Capabilities:
+
 1. **Atomic DvP Model 1 Settlement:** Cash (`nhEUR`) and collateral (`nhBOND NAV`) exchange simultaneously in a single atomic transaction. Either both legs settle instantaneously, or the entire transaction reverts. Counterparty credit risk during transit is mathematically zero.
 2. **24/7/365 Continuous Execution:** Markets never close. Nordhaven can execute intraday, overnight, or multi-week repos at 02:00 AM on a Sunday with identical finality.
 3. **EIP-712 Zero-Transaction Negotiation:** Counterparties negotiate repo terms off-chain via cryptographically signed orders and EIP-2612 gasless permits. Only one transaction is submitted on-chain to execute the trade, drastically reducing gas costs and latency.
@@ -84,8 +86,9 @@ In volatile macro environments, our trading desk cannot rebalance liquidity or a
 ```
 
 ### Institutional Risk Management Features:
+
 - **Tri-Party Escrow Custody:** Collateral is locked directly in the immutable `RepoDvP` smart contract. Neither party can rehypothecate or move collateral during the term, eliminating the Lehman-style custodial failure risk.
-- **RWA Fund NAV Oracle Integration:** Powered by an institutional-grade oracle modeled after BlackRock BUIDL and Ondo OUSG. Enforces a 24-hour staleness heartbeat and a 50 bps daily price deviation circuit breaker to prevent rogue liquidations.
+- **RWA Fund NAV Oracle Integration:** Powered by an institutional-grade oracle modeled after BlackRock BUIDL and Ondo OUSG. Exposes Chainlink's `AggregatorV3Interface`; `RepoDvP` rejects prices older than `maxPriceAge` to prevent liquidations on stale data.
 - **Automated Default Resolution:** If the borrower fails to repay at maturity or misses a margin call cure deadline, the lender can call `claimDefault()`. The contract programmatically transfers the escrowed bonds to the lender with zero legal or administrative delays.
 
 ---
@@ -109,6 +112,7 @@ In volatile macro environments, our trading desk cannot rebalance liquidity or a
 ```
 
 ### Commercial Benefits for the Trading Desk:
+
 1. **Intraday Yield Generation:** Deploy idle cash or bonds for hours rather than days, earning interest on a strictly accrued second-by-second basis.
 2. **Capital Efficiency (RWA Relief):** Guaranteed atomic DvP eliminates settlement exposure under Basel III / CRR capital requirements.
 3. **Cross-Border Collateral Mobility:** Trade tokenised German Bunds and French OATs against institutional counterparties worldwide without navigating bilateral CSD link frictions.

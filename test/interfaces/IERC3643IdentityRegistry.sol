@@ -38,10 +38,10 @@
 //
 pragma solidity 0.8.34;
 
-import {IERC3643ClaimTopicsRegistry} from "./IERC3643ClaimTopicsRegistry.sol";
-import {IERC3643IdentityRegistryStorage} from "./IERC3643IdentityRegistryStorage.sol";
-import {IERC3643TrustedIssuersRegistry} from "./IERC3643TrustedIssuersRegistry.sol";
-import {IIdentity} from "./IIdentity.sol";
+import { IERC3643ClaimTopicsRegistry } from "./IERC3643ClaimTopicsRegistry.sol";
+import { IERC3643IdentityRegistryStorage } from "./IERC3643IdentityRegistryStorage.sol";
+import { IERC3643TrustedIssuersRegistry } from "./IERC3643TrustedIssuersRegistry.sol";
+import { IIdentity } from "./IIdentity.sol";
 
 interface IERC3643IdentityRegistry {
     /// Functions

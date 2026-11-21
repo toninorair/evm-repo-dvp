@@ -1,15 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.17;
 
-import "ERC-3643/registry/implementation/ClaimTopicsRegistry.sol";
-import "ERC-3643/registry/implementation/TrustedIssuersRegistry.sol";
-import "ERC-3643/registry/implementation/IdentityRegistryStorage.sol";
-import "ERC-3643/registry/implementation/IdentityRegistry.sol";
-import "ERC-3643/compliance/modular/ModularCompliance.sol";
-import "@onchain-id/solidity/contracts/Identity.sol";
+import { ClaimTopicsRegistry } from "ERC-3643/registry/implementation/ClaimTopicsRegistry.sol";
+import { TrustedIssuersRegistry } from "ERC-3643/registry/implementation/TrustedIssuersRegistry.sol";
+import { IdentityRegistryStorage } from "ERC-3643/registry/implementation/IdentityRegistryStorage.sol";
+import { IdentityRegistry } from "ERC-3643/registry/implementation/IdentityRegistry.sol";
+import { ModularCompliance } from "ERC-3643/compliance/modular/ModularCompliance.sol";
+import { Identity } from "@onchain-id/solidity/contracts/Identity.sol";
 
-import "../../src/nhBOND.sol";
-import "./ITREXDeployer.sol";
+import { nhBOND } from "../../src/nhBOND.sol";
+import { ITREXDeployer } from "./ITREXDeployer.sol";
 
 /// @title  TREXDeployer
 /// @notice Deployer bridge compiled with Solc 0.8.17 that instantiates the authentic
@@ -21,7 +21,8 @@ contract TREXDeployer is ITREXDeployer {
         address issuer,
         string memory tokenName,
         string memory tokenSymbol,
-        uint8 decimals
+        uint8 decimals,
+        address navOracle
     ) external returns (TREXSuite memory suite) {
         BondDetails memory details = BondDetails({
             tokenName: tokenName,
@@ -30,7 +31,7 @@ contract TREXDeployer is ITREXDeployer {
             isin: "DE0001102580",
             maturityDate: block.timestamp + 365 days,
             couponRateBps: 250,
-            navOracle: address(0)
+            navOracle: navOracle
         });
         return deployBondSuite(admin, compliance, issuer, details);
     }
@@ -52,20 +53,9 @@ contract TREXDeployer is ITREXDeployer {
         mc.init();
         suite.modularCompliance = address(mc);
 
-        suite.token = _deployToken(
-            suite.identityRegistry,
-            suite.modularCompliance,
-            bondDetails
-        );
+        suite.token = _deployToken(suite.identityRegistry, suite.modularCompliance, bondDetails);
 
-        _configurePermissions(
-            suite.token,
-            suite.identityRegistry,
-            suite.modularCompliance,
-            compliance,
-            issuer,
-            admin
-        );
+        _configurePermissions(suite.token, suite.identityRegistry, suite.modularCompliance, compliance, issuer, admin);
     }
 
     function _deployRegistries(
@@ -92,20 +82,9 @@ contract TREXDeployer is ITREXDeployer {
         irAddr = address(ir);
     }
 
-    function _deployToken(
-        address ir,
-        address mc,
-        BondDetails memory bondDetails
-    ) internal returns (address) {
+    function _deployToken(address ir, address mc, BondDetails memory bondDetails) internal returns (address) {
         nhBOND tok = new nhBOND();
-        tok.init(
-            ir,
-            mc,
-            bondDetails.tokenName,
-            bondDetails.tokenSymbol,
-            bondDetails.decimals,
-            address(0)
-        );
+        tok.init(ir, mc, bondDetails.tokenName, bondDetails.tokenSymbol, bondDetails.decimals, address(0));
         tok.setBondDetails(
             bondDetails.isin,
             bondDetails.maturityDate,

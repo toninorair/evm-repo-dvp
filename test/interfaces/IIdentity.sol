@@ -59,7 +59,9 @@ interface IERC735 {
         string calldata _uri
     ) external returns (bytes32 claimRequestId);
     function removeClaim(bytes32 _claimId) external returns (bool success);
-    function getClaim(bytes32 _claimId)
+    function getClaim(
+        bytes32 _claimId
+    )
         external
         view
         returns (
@@ -76,8 +78,10 @@ interface IERC735 {
 /// @title IIdentity
 /// @notice Official ONCHAINID interface uniting ERC-734 and ERC-735
 interface IIdentity is IERC734, IERC735 {
-    function isClaimValid(IIdentity _identity, uint256 claimTopic, bytes calldata sig, bytes calldata data)
-        external
-        view
-        returns (bool);
+    function isClaimValid(
+        IIdentity _identity,
+        uint256 claimTopic,
+        bytes calldata sig,
+        bytes calldata data
+    ) external view returns (bool);
 }

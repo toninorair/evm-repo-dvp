@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.34;
 
-import {RepoTestBase} from "../utils/RepoTestBase.sol";
-import {RepoHandler} from "./RepoHandler.sol";
+import { RepoDvP } from "../../src/RepoDvP.sol";
+import { RepoTestBase } from "../utils/RepoTestBase.sol";
+import { RepoHandler } from "./RepoHandler.sol";
 
 /// @title  RepoInvariantTest
 /// @notice Invariant tests verifying continuous contract solvency and zero trapped cash.
@@ -23,15 +24,15 @@ contract RepoInvariantTest is RepoTestBase {
         assertEq(cashToken.balanceOf(address(repoDvP)), 0, "RepoDvP must never custody cash");
     }
 
-    /// @notice Invariant: Escrowed bond tokens in RepoDvP must match sum of active collateral.
+    /// @notice Invariant: Escrowed bond tokens in RepoDvP must match active collateral (default surplus is returned immediately).
     function invariant_EscrowSolvency() public view {
         uint256 totalActiveCollateral = 0;
         uint256 count = repoDvP.repoCount();
 
         for (uint256 i = 1; i <= count;) {
-            (RepoTerms memory terms, RepoState memory state) = repoDvP.getRepo(i);
-            if (state.status == RepoStatus.Active || state.status == RepoStatus.MarginCalled) {
-                totalActiveCollateral += terms.collateralAmount;
+            RepoDvP.RepoState memory state = _getState(i);
+            if (state.status == RepoDvP.RepoStatus.Active || state.status == RepoDvP.RepoStatus.MarginCalled) {
+                totalActiveCollateral += state.collateralAmount;
             }
             unchecked {
                 ++i;

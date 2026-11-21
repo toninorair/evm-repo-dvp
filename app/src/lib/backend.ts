@@ -165,7 +165,7 @@ const revertCopy: Record<string, string> = {
   ProposalExpired: 'The acceptance deadline has passed.',
   MarginSufficient: 'Collateral is above the maintenance threshold, so no margin call is due.',
   InitialMarginInvalid: 'Initial margin must be at most 5,000 bps.',
-  MaintenanceMarginInvalid: 'Maintenance margin must be below the initial margin.',
+  MaintenanceMarginInvalid: 'Maintenance margin cannot exceed the initial margin.',
   TermInvalid: 'Term must be between 1 second and 365 days.',
   CurePeriodInvalid: 'Cure period must be between 1 second and the term.',
   AcceptDeadlineInvalid: 'The acceptance deadline must be in the future.',

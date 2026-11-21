@@ -110,7 +110,7 @@ export function Propose() {
     else if (same(lender, account)) errors.push('The lender must be a different wallet from yours.')
     if (borrowAmount <= 0n) errors.push('Enter the cash amount to borrow.')
     if (initialMarginBps > MAX_INITIAL_MARGIN_BPS) errors.push('Initial margin must be at most 5,000 bps.')
-    if (maintenanceMarginBps >= initialMarginBps) errors.push('Maintenance margin must be below the initial margin.')
+    if (maintenanceMarginBps > initialMarginBps) errors.push('Maintenance margin cannot exceed the initial margin.')
     if (termSeconds <= 0 || termSeconds > MAX_TERM_SECONDS) errors.push('Term must be between 1 second and 365 days.')
     if (curePeriodSeconds <= 0 || curePeriodSeconds > termSeconds) errors.push('Cure period must be positive and no longer than the term.')
     if (windowSeconds <= 0) errors.push('Give the lender time to accept.')

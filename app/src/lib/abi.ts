@@ -171,7 +171,7 @@ export const repoDvpAbi = [
     "inputs": [],
     "outputs": [
       {
-        "name": "",
+        "name": "price",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -190,7 +190,7 @@ export const repoDvpAbi = [
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "collateralValueEUR",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -209,7 +209,7 @@ export const repoDvpAbi = [
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "repurchasePrice",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -228,7 +228,7 @@ export const repoDvpAbi = [
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "interest",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -247,7 +247,7 @@ export const repoDvpAbi = [
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "requiredAmount",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -266,7 +266,7 @@ export const repoDvpAbi = [
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "requiredValue",
         "type": "uint256",
         "internalType": "uint256"
       }
@@ -285,7 +285,7 @@ export const repoDvpAbi = [
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "healthy",
         "type": "bool",
         "internalType": "bool"
       }
@@ -1266,7 +1266,7 @@ export const cashTokenAbi = [
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "frozen",
         "type": "bool",
         "internalType": "bool"
       }
@@ -1723,7 +1723,7 @@ export const bondTokenAbi = [
     ],
     "outputs": [
       {
-        "name": "",
+        "name": "eligible",
         "type": "bool",
         "internalType": "bool"
       }
@@ -1841,7 +1841,7 @@ export const oracleAbi = [
     "inputs": [],
     "outputs": [
       {
-        "name": "",
+        "name": "decimalsCount",
         "type": "uint8",
         "internalType": "uint8"
       }
@@ -1854,7 +1854,7 @@ export const oracleAbi = [
     "inputs": [],
     "outputs": [
       {
-        "name": "",
+        "name": "feedDescription",
         "type": "string",
         "internalType": "string"
       }
@@ -1891,27 +1891,27 @@ export const oracleAbi = [
     "inputs": [],
     "outputs": [
       {
-        "name": "",
+        "name": "roundId",
         "type": "uint80",
         "internalType": "uint80"
       },
       {
-        "name": "",
+        "name": "answer",
         "type": "int256",
         "internalType": "int256"
       },
       {
-        "name": "",
+        "name": "startedAt",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "",
+        "name": "updatedAt",
         "type": "uint256",
         "internalType": "uint256"
       },
       {
-        "name": "",
+        "name": "answeredInRound",
         "type": "uint80",
         "internalType": "uint80"
       }

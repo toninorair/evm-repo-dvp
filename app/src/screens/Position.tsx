@@ -52,10 +52,14 @@ export function Position({ id }: { id: bigint }) {
           <span>
             <strong style={{ fontWeight: 600 }}>Margin call on {label}.</strong>{' '}
             {cureLeft > 0
-              ? `The borrower has until ${time(repo.state.cureDeadline)} to top up or settle.`
-              : m.healthy
-                ? 'The cure window has passed, but coverage is back above the threshold, so default cannot be claimed.'
-                : 'The cure window has expired. The lender may close out.'}
+              ? now > repo.state.maturity
+                ? 'Maturity has passed without repayment. The lender may close out.'
+                : `The borrower has until ${time(repo.state.cureDeadline)} to top up or settle.`
+              : !m.healthy
+                ? 'The cure window has expired. The lender may close out.'
+                : now > repo.state.maturity
+                  ? 'Maturity has passed without repayment. The lender may close out.'
+                  : 'The cure window has passed, but coverage is back above the threshold, so default cannot be claimed.'}
           </span>
           {repo.history.marginCalledValue !== undefined && <span>Collateral value at call {eur(repo.history.marginCalledValue)}</span>}
         </div>
@@ -500,7 +504,7 @@ function DefaultPanel({ repo }: { repo: Repo }) {
   const when =
     repo.state.status === RepoStatus.MarginCalled
       ? now > repo.state.cureDeadline
-        ? 'once coverage is still below threshold'
+        ? `after maturity · ${dateTime(repo.state.maturity)} (or if coverage drops below threshold)`
         : `after ${time(repo.state.cureDeadline)} if still uncured`
       : `after maturity · ${dateTime(repo.state.maturity)}`
   return (

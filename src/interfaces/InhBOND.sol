@@ -29,15 +29,23 @@ interface InhBOND {
     /* ============ Banking / Issuance Functions ============ */
 
     /// @notice Primary issuance of bond tokens to an authorized counterparty.
+    /// @param  to      Verified recipient wallet address.
+    /// @param  amount  Number of `nhBOND` units (18 decimals) to issue.
     function issue(address to, uint256 amount) external;
 
     /// @notice Redemption of bond tokens upon or after maturity.
+    /// @param  from    Holder address whose matured bond tokens are being redeemed.
+    /// @param  amount  Number of `nhBOND` units (18 decimals) to burn.
     function redeem(address from, uint256 amount) external;
 
     /// @notice Configures sovereign bond static master data.
     /// @dev    Assumes a coupon-bearing sovereign bond (`couponRateBps_ > 0`) and remains re-callable by `onlyOwner`
     ///         in the POC for testnet/demo reconfiguration; in production, static master data (`isin`, `maturityDate`,
     ///         `couponRateBps`) would be immutable after initialization.
+    /// @param  isin_           Non-empty ISIN string identifier for the sovereign bond.
+    /// @param  maturityDate_   Non-zero maturity Unix timestamp.
+    /// @param  couponRateBps_  Non-zero annual coupon rate in basis points.
+    /// @param  navOracle_      Non-zero address of the `nhNAVOracle` contract.
     function setBondDetails(
         string calldata isin_,
         uint256 maturityDate_,

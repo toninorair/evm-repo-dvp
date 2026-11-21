@@ -108,7 +108,21 @@ contract RepoDvP is IRepoDvP {
 
     /* ============ Interactive Functions ============ */
 
-    /// @inheritdoc IRepoDvP
+    /// @notice Proposes a bilateral repo agreement on-chain.
+    /// @dev    Callable only by the borrower (`msg.sender`), who names the counterparty `lender`. Both borrower
+    ///         and lender must be verified in the live ERC-3643 `IdentityRegistry` of both the collateral token
+    ///         and the cash token. No tokens move during proposal; opening collateral is sized dynamically at
+    ///         acceptance from `initialMarginBps` and bounded by `maxCollateralAmount`.
+    /// @param  lender                Designated lender address authorized to accept the proposal (non-zero, not borrower).
+    /// @param  borrowAmount          Cash principal to borrow in `cashToken` units (18 decimals).
+    /// @param  repoRateBps           Annualized repo interest rate in basis points (Actual/360).
+    /// @param  initialMarginBps      Initial over-collateralization margin in bps over `borrowAmount` (max 5,000 bps).
+    /// @param  maintenanceMarginBps  Maintenance margin threshold in bps over the accruing repurchase price (`<= initialMarginBps`).
+    /// @param  termSeconds           Duration of the repo from acceptance to maturity in seconds (1s to 365 days).
+    /// @param  curePeriodSeconds     Grace period in seconds for the borrower to cure a margin call (`<= termSeconds`).
+    /// @param  maxCollateralAmount   Maximum `collateralToken` units the borrower consents to post at acceptance.
+    /// @param  acceptDeadline        Unix timestamp after which the proposal expires and can no longer be accepted.
+    /// @return repoId                Unique sequential identifier assigned to the proposed repo agreement.
     function proposeRepo(
         address lender,
         uint256 borrowAmount,
@@ -156,7 +170,13 @@ contract RepoDvP is IRepoDvP {
         emit RepoProposed(repoId, borrower, lender, borrowAmount, maxCollateralAmount, repoRateBps, termSeconds);
     }
 
-    /// @inheritdoc IRepoDvP
+    /// @notice Accepts a pending repo proposal and executes the Opening Leg via atomic Delivery-versus-Payment (DvP).
+    /// @dev    Callable only by the designated `order.lender` while `status == Proposed` and `block.timestamp <= acceptDeadline`.
+    ///         Sizes required opening collateral from `borrowAmount`, `initialMarginBps`, and the live oracle NAV price
+    ///         (rounded up in the lender's favor). Reverts with `CollateralAboveCap` if the required units exceed
+    ///         `order.maxCollateralAmount`. Atomically pulls collateral from borrower into contract escrow and transfers
+    ///         cash principal directly from lender to borrower.
+    /// @param  repoId  Identifier of the proposed repo agreement to accept.
     function acceptRepo(uint256 repoId) external {
         RepoOrder storage order = orders[repoId];
         RepoState storage state = states[repoId];
@@ -202,7 +222,9 @@ contract RepoDvP is IRepoDvP {
         );
     }
 
-    /// @inheritdoc IRepoDvP
+    /// @notice Cancels an unaccepted repo proposal.
+    /// @dev    Callable only by `order.borrower` while `status == Proposed`. Transitions status to `Cancelled`.
+    /// @param  repoId  Identifier of the proposed repo agreement to cancel.
     function cancelRepo(uint256 repoId) external {
         RepoState storage state = states[repoId];
 
@@ -214,7 +236,12 @@ contract RepoDvP is IRepoDvP {
         emit RepoCancelled(repoId, msg.sender);
     }
 
-    /// @inheritdoc IRepoDvP
+    /// @notice Executes the Closing Leg via atomic Receipt-versus-Payment (RvP).
+    /// @dev    Callable only by `order.borrower` while the repo is `Active` or `MarginCalled`. Computes the
+    ///         repurchase price (`borrowAmount` + Actual/360 accrued interest up to `block.timestamp`),
+    ///         atomically transfers cash repayment from borrower to lender, and releases all escrowed
+    ///         collateral back to the borrower.
+    /// @param  repoId  Identifier of the open repo agreement to settle.
     function settleRepo(uint256 repoId) external {
         RepoOrder storage order = orders[repoId];
         RepoState storage state = states[repoId];
@@ -239,7 +266,10 @@ contract RepoDvP is IRepoDvP {
         emit RepoSettled(repoId, totalRepurchasePrice, returnCollateral, uint40(block.timestamp));
     }
 
-    /// @inheritdoc IRepoDvP
+    /// @notice Triggers an on-chain margin call when mark-to-market collateral value breaches the maintenance threshold.
+    /// @dev    Permissionless while `status == Active`. Reverts with `MarginSufficient` if `isMarginHealthy(repoId)`
+    ///         is true. Transitions status to `MarginCalled` and sets `cureDeadline = block.timestamp + curePeriodSeconds`.
+    /// @param  repoId  Identifier of the active repo agreement to evaluate.
     function marginCall(uint256 repoId) external {
         RepoState storage state = states[repoId];
         if (state.status != RepoStatus.Active) revert InvalidState(state.status);
@@ -252,7 +282,12 @@ contract RepoDvP is IRepoDvP {
         emit MarginCalled(repoId, getCollateralValue(repoId), state.cureDeadline);
     }
 
-    /// @inheritdoc IRepoDvP
+    /// @notice Posts additional collateral to escrow to cure a margin call or add margin buffer.
+    /// @dev    Callable only by `order.borrower` while `status == Active` or `MarginCalled`. Pulls `topUpAmount`
+    ///         of `collateralToken` into escrow; if `isMarginHealthy(repoId)` is satisfied after the top-up,
+    ///         restores `status` to `Active` and resets `cureDeadline` to `0`.
+    /// @param  repoId       Identifier of the open repo agreement.
+    /// @param  topUpAmount  Amount of additional `collateralToken` units (18 decimals) to transfer into escrow.
     function topUpCollateral(uint256 repoId, uint256 topUpAmount) external {
         if (topUpAmount == 0) revert ZeroAmount();
         if (msg.sender != orders[repoId].borrower) revert Unauthorized();
@@ -274,10 +309,15 @@ contract RepoDvP is IRepoDvP {
         emit MarginToppedUp(repoId, topUpAmount, state.collateralAmount);
     }
 
-    /// @inheritdoc IRepoDvP
-    /// @dev POC simplification: `surplusCollateral` is pushed directly to `order.borrower` in the same tx.
-    ///      If `order.borrower` is frozen or de-verified in ERC-3643 when `surplusCollateral > 0`, the transfer
-    ///      reverts; in production, surplus can be credited to a pull-claim mapping or routed via a compliance escrow.
+    /// @notice Executes default close-out netting upon post-maturity non-payment or an expired, uncured margin call.
+    /// @dev    Callable only by `order.lender` when either (`(status == Active || status == MarginCalled) && block.timestamp > maturity`)
+    ///         or (`status == MarginCalled && block.timestamp > cureDeadline && !isMarginHealthy(repoId)`).
+    ///         Seizes escrowed collateral worth `getCurrentRepurchasePrice(repoId)` at the live oracle NAV price (rounded up,
+    ///         capped at `state.collateralAmount`) and transfers it to the lender.
+    ///         POC simplification: any `surplusCollateral` is pushed directly to `order.borrower` in the same tx so escrow
+    ///         ends empty. If `order.borrower` is frozen or de-verified in ERC-3643 when `surplusCollateral > 0`, the push
+    ///         reverts; in production, surplus can be credited to a pull-claim mapping or routed via a compliance escrow.
+    /// @param  repoId  Identifier of the defaulting repo agreement.
     function claimDefault(uint256 repoId) external {
         RepoOrder storage order = orders[repoId];
         RepoState storage state = states[repoId];
@@ -319,22 +359,29 @@ contract RepoDvP is IRepoDvP {
 
     /* ============ View Functions ============ */
 
-    /// @inheritdoc IRepoDvP
-    /// @dev Reads `latestRoundData()` from `collateralOracle` without enforcing an on-chain staleness window
-    ///      (POC simplification; fund NAVs update once daily off-chain). Reverts if the oracle price is `<= 0`.
-    function getCollateralPrice() public view returns (uint256) {
-        (, int256 price, , , ) = InhNAVOracle(collateralOracle).latestRoundData();
-        if (price <= 0) revert InhNAVOracle.InvalidNAV();
-        return uint256(price);
+    /// @notice Returns the latest collateral NAV price in EUR (8 decimals) from `collateralOracle`.
+    /// @dev    Reads `latestRoundData()` without enforcing an on-chain staleness window (POC simplification;
+    ///         fund NAVs update once daily off-chain). Reverts with `InhNAVOracle.InvalidNAV` if price is `<= 0`.
+    /// @return price  Positive collateral price per token unit with 8 decimals (`1e8 = €1.00`).
+    function getCollateralPrice() public view returns (uint256 price) {
+        (, int256 answer, , , ) = InhNAVOracle(collateralOracle).latestRoundData();
+        if (answer <= 0) revert InhNAVOracle.InvalidNAV();
+        return uint256(answer);
     }
 
-    /// @inheritdoc IRepoDvP
-    function getCurrentRepurchasePrice(uint256 repoId) public view returns (uint256) {
+    /// @notice Returns the total repurchase price (`borrowAmount` + accrued interest) currently owed for a repo.
+    /// @param  repoId           Identifier of the repo agreement.
+    /// @return repurchasePrice  Total cash repayment in `cashToken` units (18 decimals).
+    function getCurrentRepurchasePrice(uint256 repoId) public view returns (uint256 repurchasePrice) {
         return orders[repoId].borrowAmount + getRepoInterest(repoId);
     }
 
-    /// @inheritdoc IRepoDvP
-    function getRepoInterest(uint256 repoId) public view returns (uint256) {
+    /// @notice Calculates the Actual/360 interest accrued since `startTime` up to `block.timestamp`.
+    /// @dev    Formula: `(borrowAmount * repoRateBps * elapsedSeconds) / (360 days * 10,000)`, rounded down.
+    ///         Returns `0` unless the repo is `Active` or `MarginCalled`.
+    /// @param  repoId    Identifier of the repo agreement.
+    /// @return interest  Accrued interest in `cashToken` units (18 decimals).
+    function getRepoInterest(uint256 repoId) public view returns (uint256 interest) {
         RepoOrder storage order = orders[repoId];
         RepoState storage state = states[repoId];
 
@@ -344,21 +391,36 @@ contract RepoDvP is IRepoDvP {
         return (order.borrowAmount * order.repoRateBps * elapsed) / INTEREST_DENOMINATOR;
     }
 
-    function getCollateralValue(uint256 repoId) public view returns (uint256) {
+    /// @notice Calculates the current mark-to-market EUR value (18 decimals) of a repo's escrowed collateral.
+    /// @dev    Formula: `(collateralAmount * getCollateralPrice()) / 1e8`.
+    /// @param  repoId              Identifier of the repo agreement.
+    /// @return collateralValueEUR  Mark-to-market collateral value in EUR (18 decimals).
+    function getCollateralValue(uint256 repoId) public view returns (uint256 collateralValueEUR) {
         return (states[repoId].collateralAmount * getCollateralPrice()) / ORACLE_PRICE_PRECISION;
     }
 
-    function getRequiredCollateralValue(uint256 repoId) public view returns (uint256) {
+    /// @notice Calculates the minimum collateral value in EUR (18 decimals) required to satisfy `maintenanceMarginBps`.
+    /// @dev    Formula: `(getCurrentRepurchasePrice(repoId) * (10,000 + maintenanceMarginBps)) / 10,000`.
+    /// @param  repoId         Identifier of the repo agreement.
+    /// @return requiredValue  Minimum required collateral value in EUR (18 decimals).
+    function getRequiredCollateralValue(uint256 repoId) public view returns (uint256 requiredValue) {
         return
             (getCurrentRepurchasePrice(repoId) * (BPS_DENOMINATOR + orders[repoId].maintenanceMarginBps)) /
             BPS_DENOMINATOR;
     }
 
-    function getRequiredCollateralAmount(uint256 repoId) public view returns (uint256) {
+    /// @notice Calculates the minimum `collateralToken` units (18 decimals) required to satisfy `maintenanceMarginBps` at the current price.
+    /// @dev    Formula: `ceilDiv(getRequiredCollateralValue(repoId) * 1e8, getCollateralPrice())`.
+    /// @param  repoId          Identifier of the repo agreement.
+    /// @return requiredAmount  Minimum required collateral token units (18 decimals).
+    function getRequiredCollateralAmount(uint256 repoId) public view returns (uint256 requiredAmount) {
         return Math.ceilDiv(getRequiredCollateralValue(repoId) * ORACLE_PRICE_PRECISION, getCollateralPrice());
     }
 
-    function isMarginHealthy(uint256 repoId) public view returns (bool) {
+    /// @notice Checks whether a repo's escrowed collateral value meets or exceeds its maintenance margin requirement.
+    /// @param  repoId   Identifier of the repo agreement.
+    /// @return healthy  True if `getCollateralValue(repoId) >= getRequiredCollateralValue(repoId)`.
+    function isMarginHealthy(uint256 repoId) public view returns (bool healthy) {
         return getCollateralValue(repoId) >= getRequiredCollateralValue(repoId);
     }
 

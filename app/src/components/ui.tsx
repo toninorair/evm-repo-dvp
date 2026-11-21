@@ -70,10 +70,15 @@ export function Header({ route }: { route: string }) {
           {account ? (
             <span style={{ padding: '5px 6px 5px 12px', background: 'var(--ink)', color: 'var(--ground)', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
               <span>
-                {tabLabel[tab]} · {shortAddr(account)}
+                {tab === 'market' || tab === 'identity' ? 'Operator' : tabLabel[tab]} · {shortAddr(account)}
               </span>
               {checks && !checks.verified && <span style={{ color: '#ff8a80' }}>· not verified</span>}
-              <button type="button" onClick={disconnect} title={`Disconnect the ${tabLabel[tab].toLowerCase()} wallet`} style={{ background: 'transparent', border: 0, color: 'inherit', cursor: 'pointer', opacity: 0.7, fontSize: 12, padding: '0 6px' }}>
+              <button
+                type="button"
+                onClick={disconnect}
+                title={`Disconnect the ${tab === 'market' || tab === 'identity' ? 'operator' : tabLabel[tab].toLowerCase()} wallet`}
+                style={{ background: 'transparent', border: 0, color: 'inherit', cursor: 'pointer', opacity: 0.7, fontSize: 12, padding: '0 6px' }}
+              >
                 Disconnect
               </button>
             </span>
@@ -99,7 +104,7 @@ export function Header({ route }: { route: string }) {
               >
                 <span style={{ fontSize: 14, fontWeight: on ? 600 : 400 }}>{tabLabel[t]}</span>
                 <span className="small" style={{ color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
-                  {bound ? shortAddr(bound) : 'Not connected'}
+                  {bound ? (t === 'identity' ? 'Shared operator' : shortAddr(bound)) : 'Not connected'}
                 </span>
               </a>
             )

@@ -276,7 +276,7 @@ contract RepoDvPTest is RepoTestBase {
         assertEq(repoDvP.getCollateralPrice(), uint256(INITIAL_BOND_PRICE));
 
         vm.prank(admin);
-        oracle.updatePrice(99_50000000);
+        oracle.updateNAV(99_50000000);
         assertEq(repoDvP.getCollateralPrice(), 99_50000000);
     }
 
@@ -303,7 +303,7 @@ contract RepoDvPTest is RepoTestBase {
 
         int256 newPrice = 99_50000000; // €99.50
         vm.prank(admin);
-        oracle.updatePrice(newPrice);
+        oracle.updateNAV(newPrice);
 
         _approveAndAccept(repoId);
 
@@ -320,7 +320,7 @@ contract RepoDvPTest is RepoTestBase {
 
         int256 newPrice = 99_00000000; // €99.00 -> needs ~103,030 bonds > 103,000 cap
         vm.prank(admin);
-        oracle.updatePrice(newPrice);
+        oracle.updateNAV(newPrice);
 
         uint256 required = (EXPECTED_REQUIRED_VALUE * 1e8 + uint256(newPrice) - 1) / uint256(newPrice);
         vm.prank(bankB);

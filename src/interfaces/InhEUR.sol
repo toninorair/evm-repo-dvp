@@ -2,7 +2,6 @@
 pragma solidity 0.8.34;
 
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Permit.sol";
 
 /// @title  InhEUR
 /// @notice Interface for Nordhaven Tokenised Euro Deposit (nhEUR).
@@ -33,7 +32,7 @@ interface InhEUR is IERC20 {
 
     /// @notice Emitted when the compliance registry address is updated.
     /// @param  newRegistry Address of the new compliance registry.
-    event ComplianceRegistryUpdated(address indexed newRegistry);
+    event IdentityRegistryUpdated(address indexed newRegistry);
 
     /* ============ Custom Errors ============ */
 
@@ -44,7 +43,7 @@ interface InhEUR is IERC20 {
     error ZeroAdmin();
     error ZeroTreasury();
     error ZeroCompliance();
-    error ZeroComplianceRegistry();
+    error ZeroIdentityRegistry();
 
     /// @notice Thrown when a token amount is zero.
     error ZeroAmount();
@@ -78,7 +77,7 @@ interface InhEUR is IERC20 {
 
     /// @notice Updates the institutional compliance registry.
     /// @param  newRegistry Address of the new registry.
-    function setComplianceRegistry(address newRegistry) external;
+    function setIdentityRegistry(address newRegistry) external;
 
     /// @notice Pauses all token transfers (emergency circuit-breaker).
     function pause() external;
@@ -93,5 +92,5 @@ interface InhEUR is IERC20 {
     function isFrozen(address account) external view returns (bool);
 
     /// @notice Returns the address of the compliance registry.
-    function complianceRegistry() external view returns (address);
+    function identityRegistry() external view returns (address);
 }

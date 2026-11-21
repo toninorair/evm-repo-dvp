@@ -45,8 +45,7 @@ interface IRepoDvP {
     event MarginToppedUp(uint256 indexed repoId, uint256 additionalCollateral, uint256 newTotalCollateral);
 
     /// @notice Emitted on default close-out. The lender seizes collateral worth `amountOwed` at the current
-    ///         price; `surplusCollateral` is left claimable by the borrower; `shortfall` (EUR) is the part of
-    ///         `amountOwed` the collateral could not cover and remains an off-chain claim.
+    ///         price; `surplusCollateral` is returned to the borrower in the same call.
     event RepoDefaulted(
         uint256 indexed repoId,
         address indexed lender,
@@ -56,16 +55,12 @@ interface IRepoDvP {
         string reason
     );
 
-    /// @notice Emitted when the borrower withdraws collateral surplus left after a default close-out.
-    event SurplusClaimed(uint256 indexed repoId, address indexed borrower, uint256 amount);
-
     /// @notice Emitted when an unaccepted proposal is cancelled.
     event RepoCancelled(uint256 indexed repoId, address indexed proposer);
 
     /* ============ Custom Errors ============ */
 
-    error ZeroAdmin();
-    error ZeroComplianceRegistry();
+    error ZeroIdentityRegistry();
     error ZeroPriceOracle();
     error ZeroMaxPriceAge();
     error StalePrice(uint256 updatedAt, uint256 currentTimestamp);
@@ -76,8 +71,6 @@ interface IRepoDvP {
     error NotKYCVerified(address account);
     error InvalidLender();
     error CollateralAboveCap(uint256 requiredCollateral, uint256 maxCollateralAmount);
-    error MaturityNotReached(uint256 maturity, uint256 currentTimestamp);
-    error CurePeriodActive(uint256 cureDeadline, uint256 currentTimestamp);
     error MarginSufficient();
     error InitialMarginInvalid();
     error TermInvalid();
@@ -85,7 +78,6 @@ interface IRepoDvP {
     error MaintenanceMarginInvalid();
     error AcceptDeadlineInvalid();
     error ProposalExpired(uint256 acceptDeadline, uint256 currentTimestamp);
-    error NoDefault();
 
     /* ============ Interactive Functions ============ */
 
@@ -107,7 +99,7 @@ interface IRepoDvP {
 
     /// @notice Accepts an on-chain proposal and executes Atomic DvP (Opening Leg).
     /// @dev    Callable only by the lender and only until `acceptDeadline`. Pulls exactly the
-    ///         `getRepoInfo` collateral at the current price; reverts with `CollateralAboveCap` if that
+    ///         `getRequiredCollateralAmount` at the current price; reverts with `CollateralAboveCap` if that
     ///         exceeds the borrower's `maxCollateralAmount`.
     function acceptRepo(uint256 repoId) external;
 

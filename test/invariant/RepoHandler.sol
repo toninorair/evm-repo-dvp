@@ -4,7 +4,6 @@ pragma solidity 0.8.34;
 import { Test } from "forge-std/Test.sol";
 import { RepoDvP } from "../../src/RepoDvP.sol";
 import { nhEUR } from "../../src/nhEUR.sol";
-import { InhBOND } from "../../src/interfaces/InhBOND.sol";
 import { ITestBond } from "../interfaces/ITestBond.sol";
 
 /// @title  RepoHandler

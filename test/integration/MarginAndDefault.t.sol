@@ -3,8 +3,7 @@ pragma solidity 0.8.34;
 
 import { RepoDvP } from "../../src/RepoDvP.sol";
 import { RepoTestBase } from "../utils/RepoTestBase.sol";
-import { IRepoDvP } from "../../src/interfaces/IRepoDvP.sol";
-import { ICollateralPriceOracle } from "../../src/interfaces/ICollateralPriceOracle.sol";
+import { AggregatorV3Interface, InhNAVOracle } from "../../src/interfaces/InhNAVOracle.sol";
 
 /// @title  MarginAndDefaultTest
 /// @notice Integration tests for dynamic mark-to-market margin calls, top-ups, and default liquidations.
@@ -53,7 +52,7 @@ contract MarginAndDefaultTest is RepoTestBase {
         // Bond price drops from €100 to €92
         int256 droppedPrice = 92_00000000;
         vm.prank(admin);
-        oracle.updatePrice(droppedPrice);
+        oracle.updateNAV(droppedPrice);
 
         // Trigger margin call notice
         repoDvP.marginCall(activeRepoId);
@@ -105,7 +104,7 @@ contract MarginAndDefaultTest is RepoTestBase {
     function test_Default_SurplusReflectsPriceRise() public {
         // Collateral appreciates 10%: the lender still takes only what is owed.
         vm.prank(admin);
-        oracle.updatePrice(110_00000000);
+        oracle.updateNAV(110_00000000);
         vm.warp(block.timestamp + TERM_SECONDS + 1);
 
         uint256 owed = repoDvP.getCurrentRepurchasePrice(activeRepoId);
@@ -123,7 +122,7 @@ contract MarginAndDefaultTest is RepoTestBase {
     function test_Default_MissedMarginCure() public {
         // Bond price crashes from €100 to €85
         vm.prank(admin);
-        oracle.updatePrice(85_00000000);
+        oracle.updateNAV(85_00000000);
 
         // Trigger margin call
         repoDvP.marginCall(activeRepoId);
@@ -165,7 +164,7 @@ contract MarginAndDefaultTest is RepoTestBase {
     function test_MarginDefault_StillAllowedWhileCashTokenPaused() public {
         // A missed margin cure is independent of the cash leg.
         vm.prank(admin);
-        oracle.updatePrice(85_00000000);
+        oracle.updateNAV(85_00000000);
         repoDvP.marginCall(activeRepoId);
 
         vm.prank(compliance);
@@ -183,12 +182,12 @@ contract MarginAndDefaultTest is RepoTestBase {
 
     function test_MarginDefault_RevertsWhenPriceRecovered() public {
         vm.prank(admin);
-        oracle.updatePrice(85_00000000);
+        oracle.updateNAV(85_00000000);
         repoDvP.marginCall(activeRepoId);
 
         // Price recovers without a top-up; the expired call must not allow seizure.
         vm.prank(admin);
-        oracle.updatePrice(INITIAL_BOND_PRICE);
+        oracle.updateNAV(INITIAL_BOND_PRICE);
         vm.warp(block.timestamp + CURE_PERIOD_SECONDS + 1);
 
         vm.prank(bankB);
@@ -198,13 +197,13 @@ contract MarginAndDefaultTest is RepoTestBase {
 
     function test_TopUp_AcceptedAndDefaultBlockedWhileOracleStale() public {
         vm.prank(admin);
-        oracle.updatePrice(85_00000000);
+        oracle.updateNAV(85_00000000);
         repoDvP.marginCall(activeRepoId);
 
         vm.mockCallRevert(
             address(oracle),
-            abi.encodeWithSelector(ICollateralPriceOracle.latestRoundData.selector),
-            abi.encodeWithSelector(ICollateralPriceOracle.InvalidPrice.selector)
+            abi.encodeWithSelector(AggregatorV3Interface.latestRoundData.selector),
+            abi.encodeWithSelector(InhNAVOracle.InvalidNAV.selector)
         );
 
         // Borrower can still post collateral; status stays MarginCalled until a live price confirms the cure.
@@ -217,7 +216,7 @@ contract MarginAndDefaultTest is RepoTestBase {
         // Lender cannot seize on the margin path without a live price.
         vm.warp(block.timestamp + CURE_PERIOD_SECONDS + 1);
         vm.prank(bankB);
-        vm.expectRevert(ICollateralPriceOracle.InvalidPrice.selector);
+        vm.expectRevert(InhNAVOracle.InvalidNAV.selector);
         repoDvP.claimDefault(activeRepoId);
     }
 }

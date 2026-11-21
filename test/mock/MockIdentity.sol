@@ -63,7 +63,7 @@ contract MockIdentity is IIdentity {
     }
 
     function getClaim(
-        bytes32 claimId
+        bytes32
     )
         external
         view

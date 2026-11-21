@@ -6,7 +6,7 @@ import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC2
 import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Pausable } from "@openzeppelin/contracts/utils/Pausable.sol";
 
-import { IComplianceRegistry } from "./interfaces/IComplianceRegistry.sol";
+import { IIdentityRegistry } from "./interfaces/IIdentityRegistry.sol";
 import { InhEUR } from "./interfaces/InhEUR.sol";
 
 /// @title  nhEUR
@@ -25,8 +25,8 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
 
     /* ============ Storage ============ */
 
-    /// @notice The compliance registry enforcing institutional onboarding and sanctions screening.
-    address private _complianceRegistry;
+    /// @notice ERC-3643 IdentityRegistry enforcing institutional onboarding (shared with nhBOND and RepoDvP).
+    address private _identityRegistry;
 
     /// @notice Mapping tracking whether an address is frozen under AML/regulatory orders.
     mapping(address account => bool frozen) private _frozenAccounts;
@@ -37,23 +37,21 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
     /// @param  admin               Address granted DEFAULT_ADMIN_ROLE.
     /// @param  treasury            Address granted TREASURY_ROLE (mint/burn authority).
     /// @param  compliance          Address granted COMPLIANCE_ROLE (freeze/pause authority).
-    /// @param  complianceRegistry_ Address of the initial compliance registry.
+    /// @param  identityRegistry_   Address of the ERC-3643 IdentityRegistry.
     constructor(
         address admin,
         address treasury,
         address compliance,
-        address complianceRegistry_
+        address identityRegistry_
     ) ERC20("Nordhaven EUR Deposit", "nhEUR") ERC20Permit("Nordhaven EUR Deposit") {
         if (admin == address(0)) revert ZeroAdmin();
         if (treasury == address(0)) revert ZeroTreasury();
         if (compliance == address(0)) revert ZeroCompliance();
-        if (complianceRegistry_ == address(0)) revert ZeroComplianceRegistry();
+        if ((_identityRegistry = identityRegistry_) == address(0)) revert ZeroIdentityRegistry();
 
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
         _grantRole(TREASURY_ROLE, treasury);
         _grantRole(COMPLIANCE_ROLE, compliance);
-
-        _complianceRegistry = complianceRegistry_;
     }
 
     /* ============ Interactive Functions ============ */
@@ -61,21 +59,27 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
     /// @inheritdoc InhEUR
     function mint(address to, uint256 amount, string calldata fiatRef) external onlyRole(TREASURY_ROLE) {
         if (amount == 0) revert ZeroAmount();
+
         _mint(to, amount);
+
         emit DepositMinted(to, amount, fiatRef);
     }
 
     /// @inheritdoc InhEUR
     function burn(address from, uint256 amount, string calldata fiatRef) external onlyRole(TREASURY_ROLE) {
         if (amount == 0) revert ZeroAmount();
+
         _burn(from, amount);
+
         emit DepositBurned(from, amount, fiatRef);
     }
 
     /// @inheritdoc InhEUR
     function setFrozen(address account, bool freezeStatus) external onlyRole(COMPLIANCE_ROLE) {
         if (account == address(0)) revert ZeroAddress();
+
         _frozenAccounts[account] = freezeStatus;
+
         if (freezeStatus) {
             emit AccountFrozen(account);
         } else {
@@ -84,10 +88,12 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
     }
 
     /// @inheritdoc InhEUR
-    function setComplianceRegistry(address newRegistry) external onlyRole(DEFAULT_ADMIN_ROLE) {
-        if (newRegistry == address(0)) revert ZeroComplianceRegistry();
-        _complianceRegistry = newRegistry;
-        emit ComplianceRegistryUpdated(newRegistry);
+    function setIdentityRegistry(address newRegistry) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        if (newRegistry == address(0)) revert ZeroIdentityRegistry();
+
+        _identityRegistry = newRegistry;
+
+        emit IdentityRegistryUpdated(newRegistry);
     }
 
     /// @inheritdoc InhEUR
@@ -108,8 +114,8 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
     }
 
     /// @inheritdoc InhEUR
-    function complianceRegistry() external view returns (address) {
-        return _complianceRegistry;
+    function identityRegistry() external view returns (address) {
+        return _identityRegistry;
     }
 
     /* ============ Internal Functions ============ */
@@ -118,11 +124,11 @@ contract nhEUR is ERC20, ERC20Permit, InhEUR, AccessControl, Pausable {
     function _update(address from, address to, uint256 value) internal override whenNotPaused {
         if (from != address(0)) {
             if (_frozenAccounts[from]) revert AccountIsFrozen(from);
-            if (!IComplianceRegistry(_complianceRegistry).isVerified(from)) revert NotKYCVerified(from);
+            if (!IIdentityRegistry(_identityRegistry).isVerified(from)) revert NotKYCVerified(from);
         }
         if (to != address(0)) {
             if (_frozenAccounts[to]) revert AccountIsFrozen(to);
-            if (!IComplianceRegistry(_complianceRegistry).isVerified(to)) revert NotKYCVerified(to);
+            if (!IIdentityRegistry(_identityRegistry).isVerified(to)) revert NotKYCVerified(to);
         }
 
         super._update(from, to, value);

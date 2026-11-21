@@ -3,44 +3,14 @@ pragma solidity 0.8.34;
 
 import { RepoTestBase } from "../utils/RepoTestBase.sol";
 import { InhEUR } from "../../src/interfaces/InhEUR.sol";
-import { IERC3643 } from "../interfaces/IERC3643.sol";
-import { IComplianceRegistry } from "../../src/interfaces/IComplianceRegistry.sol";
-import { ICollateralPriceOracle } from "../../src/interfaces/ICollateralPriceOracle.sol";
 import { nhNAVOracle } from "../../src/nhNAVOracle.sol";
 import { InhNAVOracle } from "../../src/interfaces/InhNAVOracle.sol";
 import { MockIdentity } from "../mock/MockIdentity.sol";
 
 /// @title  ComplianceAndTokensTest
-/// @notice Unit tests for ComplianceRegistry, nhEUR, nhBOND NAV, and nhNAVOracle.
+/// @notice Unit tests for nhEUR, nhBOND NAV, and nhNAVOracle.
 /// @author Ethereum Institutional / Nordhaven Bank
 contract ComplianceAndTokensTest is RepoTestBase {
-    function test_ComplianceRegistry_Verification() public {
-        address newDesk = makeAddr("newDesk");
-        assertFalse(complianceRegistry.isVerified(newDesk));
-
-        vm.prank(compliance);
-        complianceRegistry.setVerificationStatus(newDesk, true);
-        assertTrue(complianceRegistry.isVerified(newDesk));
-
-        vm.prank(compliance);
-        complianceRegistry.setVerificationStatus(newDesk, false);
-        assertFalse(complianceRegistry.isVerified(newDesk));
-    }
-
-    function test_ComplianceRegistry_BatchVerification() public {
-        address[] memory desks = new address[](3);
-        desks[0] = makeAddr("desk1");
-        desks[1] = makeAddr("desk2");
-        desks[2] = makeAddr("desk3");
-
-        vm.prank(compliance);
-        complianceRegistry.setBatchVerificationStatus(desks, true);
-
-        assertTrue(complianceRegistry.isVerified(desks[0]));
-        assertTrue(complianceRegistry.isVerified(desks[1]));
-        assertTrue(complianceRegistry.isVerified(desks[2]));
-    }
-
     function test_nhEUR_Gating_RevertsIfNotVerified() public {
         vm.prank(bankB);
         vm.expectRevert(abi.encodeWithSelector(InhEUR.NotKYCVerified.selector, unauthorizedParty));
@@ -140,23 +110,6 @@ contract ComplianceAndTokensTest is RepoTestBase {
         vm.warp(block.timestamp + 30 days);
         (, , , updatedAt, ) = navOracle.latestRoundData();
         assertEq(updatedAt, submittedAt);
-    }
-
-    function test_MockOracle_PriceUpdates() public {
-        assertEq(oracle.decimals(), 8);
-        (, int256 price, , , ) = oracle.latestRoundData();
-        assertEq(price, INITIAL_BOND_PRICE);
-
-        int256 newPrice = 98_50000000; // €98.50
-        vm.prank(admin);
-        oracle.updatePrice(newPrice);
-
-        (, int256 updatedPrice, , , ) = oracle.latestRoundData();
-        assertEq(updatedPrice, newPrice);
-
-        vm.prank(admin);
-        vm.expectRevert(ICollateralPriceOracle.InvalidPrice.selector);
-        oracle.updatePrice(-1);
     }
 
     /* ============ Official ERC-3643 Standard Tests ============ */

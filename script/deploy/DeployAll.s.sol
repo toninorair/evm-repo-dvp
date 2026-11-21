@@ -4,7 +4,6 @@ pragma solidity 0.8.34;
 import { Script } from "forge-std/Script.sol";
 import { console2 } from "forge-std/console2.sol";
 
-import { ComplianceRegistry } from "../../src/ComplianceRegistry.sol";
 import { nhNAVOracle } from "../../src/nhNAVOracle.sol";
 import { nhEUR } from "../../src/nhEUR.sol";
 import { RepoDvP } from "../../src/RepoDvP.sol";
@@ -22,16 +21,7 @@ contract DeployAll is Script {
     uint256 internal constant INITIAL_DEMO_CASH = 50_000_000 ether; // €50M demo liquidity
     uint256 internal constant INITIAL_DEMO_BONDS = 500_000 ether; // 500k bonds (€50M par)
 
-    function run()
-        external
-        returns (
-            ComplianceRegistry complianceRegistry,
-            nhNAVOracle oracle,
-            nhEUR cashToken,
-            InhBOND bondToken,
-            RepoDvP repoDvP
-        )
-    {
+    function run() external returns (nhNAVOracle oracle, nhEUR cashToken, InhBOND bondToken, RepoDvP repoDvP) {
         uint256 deployerPrivateKey = vm.envOr(
             "PRIVATE_KEY",
             uint256(0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80)
@@ -50,10 +40,7 @@ contract DeployAll is Script {
         oracle.updateNAV(INITIAL_BOND_PRICE);
         console2.log("nhNAVOracle deployed at:", address(oracle));
 
-        // 2. Deploy Legacy & ERC-3643 Compliance Infrastructure (Official T-REX Framework)
-        complianceRegistry = new ComplianceRegistry(deployer, deployer);
-        console2.log("ComplianceRegistry deployed at:", address(complianceRegistry));
-
+        // 2. Deploy ERC-3643 Compliance Infrastructure (Official T-REX Framework)
         ITREXDeployer trexDeployer = ITREXDeployer(deployCode("TREXDeployer.sol:TREXDeployer"));
         ITREXDeployer.TREXSuite memory suite = trexDeployer.deploySuite(
             deployer,
@@ -69,7 +56,7 @@ contract DeployAll is Script {
         console2.log("IdentityRegistry deployed at:", address(identityRegistry));
 
         // 3. Deploy nhEUR (Tokenised Commercial Bank Deposit - JPM Coin Model)
-        cashToken = new nhEUR(deployer, deployer, deployer, address(complianceRegistry));
+        cashToken = new nhEUR(deployer, deployer, deployer, suite.identityRegistry);
         console2.log("nhEUR (Cash Leg) deployed at:", address(cashToken));
 
         // 4. Log nhBOND NAV (Official ERC-3643 Sovereign Bond NAV Token)
@@ -77,8 +64,7 @@ contract DeployAll is Script {
 
         // 5. Deploy RepoDvP Settlement & Escrow Engine
         repoDvP = new RepoDvP(
-            deployer,
-            address(complianceRegistry),
+            suite.identityRegistry,
             address(oracle),
             MAX_PRICE_AGE,
             address(bondToken),
@@ -86,10 +72,7 @@ contract DeployAll is Script {
         );
         console2.log("RepoDvP (Settlement Engine) deployed at:", address(repoDvP));
 
-        // 6. Configure Initial Compliance & ONCHAINID Registrations
-        complianceRegistry.setVerificationStatus(deployer, true);
-        complianceRegistry.setVerificationStatus(address(repoDvP), true);
-
+        // 6. Configure ONCHAINID Registrations
         address idDeployer = trexDeployer.deployIdentity(deployer);
         address idRepoDvP = trexDeployer.deployIdentity(address(repoDvP));
         identityRegistry.registerIdentity(deployer, IIdentity(idDeployer), 276);

@@ -64,7 +64,7 @@ contract RepoFuzzTest is RepoTestBase {
         price = int256(bound(uint256(price), 50_00000000, 200_00000000)); // €50.00 to €200.00
 
         vm.prank(admin);
-        oracle.updatePrice(price);
+        oracle.updateNAV(price);
 
         vm.prank(bankA);
         uint256 repoId = repoDvP.proposeRepo(

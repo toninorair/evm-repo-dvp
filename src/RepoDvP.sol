@@ -4,18 +4,17 @@ pragma solidity 0.8.34;
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { AccessControl } from "@openzeppelin/contracts/access/AccessControl.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { IComplianceRegistry } from "./interfaces/IComplianceRegistry.sol";
-import { ICollateralPriceOracle } from "./interfaces/ICollateralPriceOracle.sol";
+import { IIdentityRegistry } from "./interfaces/IIdentityRegistry.sol";
+import { InhNAVOracle } from "./interfaces/InhNAVOracle.sol";
 import { IRepoDvP } from "./interfaces/IRepoDvP.sol";
 
 /// @title  RepoDvP
 /// @notice Delivery-versus-Payment (DvP) smart contract engine for tokenised repurchase agreements.
 /// @dev    Provides atomic gross settlement, Actual/360 interest calculations, and programmable margin management.
 /// @author Ethereum Institutional / Nordhaven Bank
-contract RepoDvP is IRepoDvP, ReentrancyGuard, AccessControl {
+contract RepoDvP is IRepoDvP, ReentrancyGuard {
     using SafeERC20 for IERC20;
 
     /* ============ Enums ============ */
@@ -64,10 +63,7 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, AccessControl {
     /// @notice Denominator for basis points (10,000 = 100.00%).
     uint256 public constant BPS_DENOMINATOR = 10_000;
 
-    /// @notice Seconds per Actual/360 financial year (360 days * 86,400 seconds).
-    uint256 public constant SECONDS_PER_YEAR_ACT_360 = 31_104_000;
-
-    /// @notice Combined interest denominator: SECONDS_PER_YEAR_ACT_360 * BPS_DENOMINATOR.
+    /// @notice Combined interest denominator: Actual/360 year in seconds (31,104,000) * BPS_DENOMINATOR.
     uint256 public constant INTEREST_DENOMINATOR = 311_040_000_000;
 
     /// @notice Oracle price precision (8 decimals, Chainlink AggregatorV3 convention).
@@ -79,15 +75,10 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, AccessControl {
     /// @notice Maximum allowed term (1 year in seconds).
     uint32 public constant MAX_REPO_TERM_SECONDS = 365 days;
 
-    /* ============ Roles ============ */
-
-    /// @notice Role authorized to configure risk and oracle parameters.
-    bytes32 public constant RISK_MANAGER_ROLE = keccak256("RISK_MANAGER_ROLE");
-
     /* ============ Immutables ============ */
 
-    /// @notice The institutional compliance registry.
-    address public immutable complianceRegistry;
+    /// @notice ERC-3643 IdentityRegistry of the collateral token (ONCHAINID-based KYC).
+    address public immutable identityRegistry;
 
     /// @notice Price oracle reporting sovereign bond EUR prices (Chainlink AggregatorV3).
     address public immutable collateralOracle;
@@ -115,29 +106,23 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, AccessControl {
     /* ============ Constructor ============ */
 
     /// @notice Constructs the RepoDvP settlement contract.
-    /// @param  admin                Address granted DEFAULT_ADMIN_ROLE and RISK_MANAGER_ROLE.
-    /// @param  complianceRegistry_ Address of the institutional KYC registry.
+    /// @param  identityRegistry_    Address of the collateral token's ERC-3643 IdentityRegistry.
     /// @param  collateralOracle_    Address of the collateral price oracle.
     /// @param  maxPriceAge_         Maximum accepted age of the oracle price, in seconds.
     /// @param  collateralToken_     Address of the collateral token.
     /// @param  cashToken_           Address of the cash token.
     constructor(
-        address admin,
-        address complianceRegistry_,
+        address identityRegistry_,
         address collateralOracle_,
         uint256 maxPriceAge_,
         address collateralToken_,
         address cashToken_
     ) {
-        if (admin == address(0)) revert ZeroAdmin();
-        if ((complianceRegistry = complianceRegistry_) == address(0)) revert ZeroComplianceRegistry();
+        if ((identityRegistry = identityRegistry_) == address(0)) revert ZeroIdentityRegistry();
         if ((collateralOracle = collateralOracle_) == address(0)) revert ZeroPriceOracle();
         if ((maxPriceAge = maxPriceAge_) == 0) revert ZeroMaxPriceAge();
         if ((collateralToken = collateralToken_) == address(0)) revert ZeroCollateralToken();
         if ((cashToken = cashToken_) == address(0)) revert ZeroCashToken();
-
-        _grantRole(DEFAULT_ADMIN_ROLE, admin);
-        _grantRole(RISK_MANAGER_ROLE, admin);
     }
 
     /* ============ Interactive Functions ============ */
@@ -164,8 +149,8 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, AccessControl {
         if (termSeconds == 0 || termSeconds > MAX_REPO_TERM_SECONDS) revert TermInvalid();
         if (curePeriodSeconds == 0 || curePeriodSeconds > termSeconds) revert CurePeriodInvalid();
         if (acceptDeadline <= block.timestamp) revert AcceptDeadlineInvalid();
-        if (!IComplianceRegistry(complianceRegistry).isVerified(borrower)) revert NotKYCVerified(borrower);
-        if (!IComplianceRegistry(complianceRegistry).isVerified(lender)) revert NotKYCVerified(lender);
+        if (!IIdentityRegistry(identityRegistry).isVerified(borrower)) revert NotKYCVerified(borrower);
+        if (!IIdentityRegistry(identityRegistry).isVerified(lender)) revert NotKYCVerified(lender);
 
         unchecked {
             repoId = ++repoCount;
@@ -350,8 +335,8 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard, AccessControl {
 
     /// @inheritdoc IRepoDvP
     function getCollateralPrice() public view returns (uint256) {
-        (, int256 price, , uint256 updatedAt, ) = ICollateralPriceOracle(collateralOracle).latestRoundData();
-        if (price <= 0) revert ICollateralPriceOracle.InvalidPrice();
+        (, int256 price, , uint256 updatedAt, ) = InhNAVOracle(collateralOracle).latestRoundData();
+        if (price <= 0) revert InhNAVOracle.InvalidNAV();
         if (block.timestamp - updatedAt > maxPriceAge) revert StalePrice(updatedAt, block.timestamp);
         return uint256(price);
     }

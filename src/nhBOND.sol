@@ -24,11 +24,6 @@ contract nhBOND is Token, InhBOND {
     /// @inheritdoc InhBOND
     address public navOracle;
 
-    /* ============ Institutional Claim Topics ============ */
-
-    uint256 public constant CLAIM_TOPIC_KYC_AML = 101;
-    uint256 public constant CLAIM_TOPIC_QUALIFIED_INSTITUTION = 102;
-
     /* ============ Sovereign Bond Configuration ============ */
 
     /// @inheritdoc InhBOND

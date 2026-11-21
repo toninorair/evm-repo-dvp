@@ -67,14 +67,12 @@ evm-dvp-repo/
 │   ├── forge-std/                        # Foundry standard testing library
 │   └── openzeppelin-contracts/           # OpenZeppelin Contracts v5.7.0
 ├── src/
-│   ├── ComplianceRegistry.sol            # KYC/AML institutional identity registry (for nhEUR / DvP)
 │   ├── nhBOND.sol                        # Tokenised sovereign bond NAV deriving from ERC-3643
 │   ├── nhEUR.sol                         # Tokenised EUR commercial bank deposit (JPM Coin model)
 │   ├── RepoDvP.sol                       # Core DvP/RvP settlement and margin engine
 │   ├── nhNAVOracle.sol                   # Production RWA MMF NAV Oracle (BUIDL / OUSG model)
 │   └── interfaces/
-│       ├── ICollateralPriceOracle.sol
-│       ├── IComplianceRegistry.sol
+│       ├── IIdentityRegistry.sol         # isVerified() view of the ERC-3643 IdentityRegistry (nhEUR / DvP KYC)
 │       ├── InhNAVOracle.sol
 │       ├── IRepoDvP.sol
 │       ├── IRepoTypes.sol
@@ -96,8 +94,7 @@ evm-dvp-repo/
 │   │   ├── RepoInvariant.t.sol           # Continuous contract solvency & zero trapped cash
 │   │   └── RepoHandler.sol               # Invariant campaign action wrapper
 │   ├── mock/
-│   │   ├── MockIdentity.sol              # Lightweight test ONCHAINID contract
-│   │   └── MockBondPriceOracle.sol       # Test price feed for simulating market crashes
+│   │   └── MockIdentity.sol              # Lightweight test ONCHAINID contract
 │   └── utils/
 │       └── RepoTestBase.sol              # Institutional test fixture deploying authentic T-REX suite
 └── script/
@@ -154,7 +151,6 @@ Ran 5 test suites: 24 tests passed, 0 failed, 0 skipped
 - testFuzz_CollateralValuation (PASS - 5,000 runs)
 - invariant_EscrowSolvency (PASS - 512 runs, 12,800 calls)
 - invariant_ZeroTrappedCash (PASS - 512 runs, 12,800 calls)
-- test_ComplianceRegistry_Verification (PASS)
 - test_AtomicDvP_OpeningLeg (PASS)
 - test_ClosingLeg_RvP_Settlement_AtMaturity (PASS)
 - test_ProposeRepo_And_Cancel (PASS)

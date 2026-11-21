@@ -421,4 +421,35 @@ contract RepoDvPTest is RepoTestBase {
         vm.expectRevert(abi.encodeWithSelector(IRepoDvP.StalePrice.selector, updatedAt, block.timestamp));
         repoDvP.getCollateralPrice();
     }
+
+    /* ============ State guards and margin views ============ */
+
+    function test_SettleAndTopUp_RevertWhileProposed() public {
+        uint256 repoId = _propose(uint40(block.timestamp + 1 days));
+
+        vm.startPrank(bankA);
+        vm.expectRevert(abi.encodeWithSelector(RepoDvP.InvalidState.selector, RepoDvP.RepoStatus.Proposed));
+        repoDvP.settleRepo(repoId);
+
+        vm.expectRevert(abi.encodeWithSelector(RepoDvP.InvalidState.selector, RepoDvP.RepoStatus.Proposed));
+        repoDvP.topUpCollateral(repoId, 1 ether);
+        vm.stopPrank();
+    }
+
+    function test_CollateralValues_MarkedToOracleAtOpen() public {
+        uint256 repoId = _propose(uint40(block.timestamp + 1 days));
+        _approveAndAccept(repoId);
+
+        uint256 posted = _getState(repoId).collateralAmount;
+        uint256 value = repoDvP.getCollateralValue(repoId);
+        uint256 required = repoDvP.getRequiredCollateralValue(repoId);
+
+        // Value is the escrowed bonds at the oracle NAV (8 decimals).
+        assertEq(value, (posted * uint256(INITIAL_BOND_PRICE)) / 1e8);
+        // Before any accrual the requirement is principal plus the maintenance margin.
+        assertEq(required, (CASH_PRINCIPAL * (10_000 + MAINTENANCE_MARGIN_BPS)) / 10_000);
+        // Opening at the initial margin leaves the repo above its maintenance requirement.
+        assertGe(value, (CASH_PRINCIPAL * (10_000 + INITIAL_MARGIN_BPS)) / 10_000);
+        assertGt(value, required);
+    }
 }

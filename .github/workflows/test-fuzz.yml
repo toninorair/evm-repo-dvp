@@ -1,35 +1,44 @@
-# name: Forge Fuzz Tests
-#
-# on:
-#   push:
-#     branches:
-#       - main
-#   pull_request:
-#
-# permissions: write-all
-#
-# jobs:
-#   check:
-#     name: Fuzz Tests
-#     runs-on: ubuntu-latest
-#     steps:
-#       - uses: actions/checkout@v4
-#         with:
-#           submodules: recursive
-#
-#       - name: Install Foundry
-#         uses: foundry-rs/foundry-toolchain@v1
-#
-#       - name: Run Forge build
-#         run: |
-#           forge --version
-#           make sizes
-#         id: build
-#
-#       - name: Run Forge fuzz tests
-#         run: make fuzz profile=ci
-#         env:
-#           # make fuzzing semi-deterministic to avoid noisy gas cost estimation
-#           # due to non-deterministic fuzzing (but still use pseudo-random fuzzing seeds)
-#           FOUNDRY_FUZZ_SEED: 0x${{ github.event.pull_request.base.sha || github.sha }}
-#           MNEMONIC: ${{ secrets.MNEMONIC_FOR_TESTS }}
+name: Forge Fuzz Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+permissions: read-all
+
+jobs:
+  check:
+    name: Fuzz Tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: lib/ERC-3643/package-lock.json
+
+      - name: Install ERC-3643 dependencies
+        working-directory: lib/ERC-3643
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Run Forge build
+        run: |
+          forge --version
+          make sizes
+        id: build
+
+      - name: Run Forge fuzz tests
+        run: make fuzz profile=ci
+        env:
+          # semi-deterministic fuzzing: the seed follows the commit, so reruns reproduce
+          FOUNDRY_FUZZ_SEED: 0x${{ github.event.pull_request.base.sha || github.sha }}

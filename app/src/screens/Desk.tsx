@@ -196,7 +196,7 @@ export function Market() {
 }
 
 function NavControl() {
-  const { snapshot, busy, run } = useLedger()
+  const { snapshot, busy, run, account } = useLedger()
   const now = useNow()
   const o = snapshot!.oracle
   const current = Number(o.price) / 1e8
@@ -216,8 +216,23 @@ function NavControl() {
           {o.stale ? 'Stale' : 'Live'}
         </span>
       </div>
-      <div className="small muted">
-        Current NAV {price(o.price)} · updated {o.updatedAt ? ago(now - o.updatedAt) : 'never'}. This wallet holds CALCULATION_AGENT_ROLE.
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingBottom: 14, borderBottom: '1px solid var(--line)' }}>
+        <span className="small muted">Current NAV</span>
+        <span style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <span className="figure" style={{ fontSize: 40 }}>
+            {price(o.price)}
+          </span>
+          <span className="muted">per nhBOND</span>
+        </span>
+        <span className="small" style={{ color: o.stale ? 'var(--bad)' : 'var(--muted)' }}>
+          Updated {o.updatedAt ? ago(now - o.updatedAt) : 'never'}
+        </span>
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <span className="small muted">Calculation agent</span>
+        <span className="small" style={{ fontVariantNumeric: 'tabular-nums', wordBreak: 'break-all' }}>
+          {account}
+        </span>
       </div>
       <div className="field">
         <label htmlFor="nav">New NAV · EUR per nhBOND</label>
@@ -225,7 +240,7 @@ function NavControl() {
         <span className="hint">{move === 0 ? 'Re-posting the same NAV refreshes staleness.' : `${move > 0 ? '+' : '−'}${Math.abs(move)} bps vs current`}</span>
       </div>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-        {[-500, -200, -100, 100].map((b) => (
+        {[-500, -200, -100, 100, 200, 500].map((b) => (
           <button key={b} type="button" className="chip" onClick={() => nudge(b)}>
             {b > 0 ? '+' : '−'}
             {Math.abs(b) / 100}%
@@ -235,7 +250,6 @@ function NavControl() {
       <button type="button" className="btn primary block" disabled={busy || next <= 0n} onClick={() => run('NAV update', (st) => backend.updateNav(next, st))}>
         Post NAV {price(next)}
       </button>
-      <span className="small muted">Drop the NAV below a repo’s call price to make marginCall() succeed; post it again before it ages out of RepoDvP’s max price age.</span>
     </div>
   )
 }

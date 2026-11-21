@@ -216,4 +216,27 @@ contract ComplianceAndTokensTest is RepoTestBase {
         assertEq(bondToken.balanceOf(lostWallet), 0);
         assertEq(bondToken.balanceOf(newWallet), originalBalance);
     }
+
+    function test_nhEUR_Burn_RedeemsDeposit() public {
+        uint256 before = cashToken.balanceOf(bankB);
+
+        vm.expectEmit(true, false, false, true, address(cashToken));
+        emit InhEUR.DepositBurned(bankB, 1_000 ether, "REDEMPTION-1");
+        vm.prank(treasury);
+        cashToken.burn(bankB, 1_000 ether, "REDEMPTION-1");
+        assertEq(cashToken.balanceOf(bankB), before - 1_000 ether);
+
+        vm.prank(treasury);
+        vm.expectRevert(InhEUR.ZeroAmount.selector);
+        cashToken.burn(bankB, 0, "REDEMPTION-2");
+
+        vm.prank(bankB);
+        vm.expectRevert();
+        cashToken.burn(bankB, 1 ether, "UNAUTHORISED");
+    }
+
+    function test_nhNAVOracle_Metadata() public view {
+        assertEq(oracle.description(), "Nordhaven EUR Sovereign Fund NAV / EUR");
+        assertEq(oracle.version(), 1);
+    }
 }

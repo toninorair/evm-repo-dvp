@@ -1,23 +1,23 @@
 :root {
-  --ground: #f2efe9;
-  --surface: #fbfaf7;
-  --ink: #17160f;
-  --muted: #5e5a50;
-  --faint: #8b8578;
-  --line: #dad5ca;
-  --field: #c9c3b6;
-  --track: #e7e2d8;
-  --accent: #1d3b5c;
+  --ground: #ffffff;
+  --surface: #ffffff;
+  --ink: #000000;
+  --muted: #555555;
+  --faint: #8a8a8a;
+  --line: #e5e5e5;
+  --field: #cccccc;
+  --track: #ededed;
+  --accent: #000000;
 
-  --ok: #234a2c;
-  --ok-bg: #dce6da;
-  --warn: #6b4600;
-  --warn-strong: #8a5a00;
-  --warn-bg: #f3e3c3;
-  --warn-line: #e2cb9c;
-  --bad: #7e2218;
-  --bad-bg: #f1d9d4;
-  --info-bg: #dde4ec;
+  --ok: #1f6b3a;
+  --ok-bg: #eef6f0;
+  --warn: #000000;
+  --warn-strong: #000000;
+  --warn-bg: #f4f4f4;
+  --warn-line: #000000;
+  --bad: #b42318;
+  --bad-bg: #fdf0ef;
+  --info-bg: #f4f4f4;
 
   --display: 'Libre Caslon Display', 'Libre Caslon Text', Georgia, serif;
   --sans: Inter, system-ui, -apple-system, 'Segoe UI', sans-serif;
@@ -48,7 +48,7 @@ a {
   color: var(--accent);
 }
 a:hover {
-  color: #0f2338;
+  color: var(--ink);
 }
 
 h1,
@@ -129,7 +129,7 @@ button {
     transform 120ms var(--ease);
 }
 .btn:hover {
-  background: rgba(23, 22, 15, 0.05);
+  background: rgba(0, 0, 0, 0.05);
   color: var(--ink);
 }
 .btn:active {
@@ -140,7 +140,7 @@ button {
   color: var(--ground);
 }
 .btn.primary:hover {
-  background: #2c2a21;
+  background: #262626;
   color: var(--ground);
 }
 .btn.quiet {
@@ -354,7 +354,7 @@ table.book tbody tr {
   transition: background-color 160ms var(--ease);
 }
 table.book tbody tr:hover {
-  background: rgba(23, 22, 15, 0.03);
+  background: rgba(0, 0, 0, 0.03);
 }
 table.book tr.closed td {
   color: var(--muted);

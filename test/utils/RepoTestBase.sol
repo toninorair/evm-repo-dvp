@@ -77,13 +77,7 @@ abstract contract RepoTestBase is Test {
         cashToken = new nhEUR(admin, treasury, compliance, address(identityRegistry));
 
         // 4. Deploy RepoDvP Engine
-        repoDvP = new RepoDvP(
-            address(identityRegistry),
-            address(oracle),
-            MAX_PRICE_AGE,
-            address(bondToken),
-            address(cashToken)
-        );
+        repoDvP = new RepoDvP(address(oracle), MAX_PRICE_AGE, address(bondToken), address(cashToken));
 
         vm.stopPrank();
 

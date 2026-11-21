@@ -6,7 +6,7 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { ReentrancyGuard } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
 
-import { IIdentityRegistry } from "./interfaces/IIdentityRegistry.sol";
+import { IIdentityRegistry, IIdentityRegistryBound } from "./interfaces/IIdentityRegistry.sol";
 import { InhNAVOracle } from "./interfaces/InhNAVOracle.sol";
 import { IRepoDvP } from "./interfaces/IRepoDvP.sol";
 
@@ -77,9 +77,6 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
 
     /* ============ Immutables ============ */
 
-    /// @notice ERC-3643 IdentityRegistry of the collateral token (ONCHAINID-based KYC).
-    address public immutable identityRegistry;
-
     /// @notice Price oracle reporting sovereign bond EUR prices (Chainlink AggregatorV3).
     address public immutable collateralOracle;
 
@@ -106,19 +103,11 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
     /* ============ Constructor ============ */
 
     /// @notice Constructs the RepoDvP settlement contract.
-    /// @param  identityRegistry_    Address of the collateral token's ERC-3643 IdentityRegistry.
     /// @param  collateralOracle_    Address of the collateral price oracle.
     /// @param  maxPriceAge_         Maximum accepted age of the oracle price, in seconds.
     /// @param  collateralToken_     Address of the collateral token.
     /// @param  cashToken_           Address of the cash token.
-    constructor(
-        address identityRegistry_,
-        address collateralOracle_,
-        uint256 maxPriceAge_,
-        address collateralToken_,
-        address cashToken_
-    ) {
-        if ((identityRegistry = identityRegistry_) == address(0)) revert ZeroIdentityRegistry();
+    constructor(address collateralOracle_, uint256 maxPriceAge_, address collateralToken_, address cashToken_) {
         if ((collateralOracle = collateralOracle_) == address(0)) revert ZeroPriceOracle();
         if ((maxPriceAge = maxPriceAge_) == 0) revert ZeroMaxPriceAge();
         if ((collateralToken = collateralToken_) == address(0)) revert ZeroCollateralToken();
@@ -149,8 +138,9 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
         if (termSeconds == 0 || termSeconds > MAX_REPO_TERM_SECONDS) revert TermInvalid();
         if (curePeriodSeconds == 0 || curePeriodSeconds > termSeconds) revert CurePeriodInvalid();
         if (acceptDeadline <= block.timestamp) revert AcceptDeadlineInvalid();
-        if (!IIdentityRegistry(identityRegistry).isVerified(borrower)) revert NotKYCVerified(borrower);
-        if (!IIdentityRegistry(identityRegistry).isVerified(lender)) revert NotKYCVerified(lender);
+
+        _requireVerified(borrower);
+        _requireVerified(lender);
 
         unchecked {
             repoId = ++repoCount;
@@ -373,5 +363,17 @@ contract RepoDvP is IRepoDvP, ReentrancyGuard {
 
     function isMarginHealthy(uint256 repoId) public view returns (bool) {
         return getCollateralValue(repoId) >= getRequiredCollateralValue(repoId);
+    }
+
+    /* ============ Internal Functions ============ */
+
+    /// @dev Reverts unless `account` is verified in the registry each leg's token enforces right now.
+    ///      Read live because either token can switch registries, and the two legs may use different ones.
+    ///      A fail-fast only: the tokens re-check on every transfer, so settlement is still guarded.
+    function _requireVerified(address account) private view {
+        if (
+            !IIdentityRegistry(IIdentityRegistryBound(collateralToken).identityRegistry()).isVerified(account) ||
+            !IIdentityRegistry(IIdentityRegistryBound(cashToken).identityRegistry()).isVerified(account)
+        ) revert NotKYCVerified(account);
     }
 }

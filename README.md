@@ -72,7 +72,7 @@ evm-dvp-repo/
 │   ├── RepoDvP.sol                       # Core DvP/RvP settlement and margin engine
 │   ├── nhNAVOracle.sol                   # Production RWA MMF NAV Oracle (BUIDL / OUSG model)
 │   └── interfaces/
-│       ├── IIdentityRegistry.sol         # isVerified() view of the ERC-3643 IdentityRegistry (nhEUR / DvP KYC)
+│       ├── IIdentityRegistry.sol         # isVerified() + token identityRegistry() views (DvP reads each leg's registry live)
 │       ├── InhNAVOracle.sol
 │       ├── IRepoDvP.sol
 │       ├── IRepoTypes.sol
@@ -169,7 +169,7 @@ Ran 5 test suites: 24 tests passed, 0 failed, 0 skipped
 
 ## 3b. Settlement Console (web app)
 
-A Vite + React + viem front end lives in [`app/`](app/README.md). Run `npm --prefix app install && npm run app:dev`. With no addresses configured it opens in demo mode; set `app/.env` from `app/.env.example` to point it at a Sepolia deployment.
+A Vite + React + viem front end lives in [`app/`](app/README.md). It reads and writes the deployed contracts on Sepolia: borrower and lender each connect a browser wallet and run the full lifecycle. Set `VITE_REPO_DVP` in `app/.env` (from `app/.env.example`), then run `npm --prefix app install && npm run app:dev`.
 
 ---
 
@@ -183,7 +183,12 @@ Set your Sepolia credentials in `.env`:
 SEPOLIA_RPC_URL=https://eth-sepolia.g.alchemy.com/v2/YOUR_KEY
 ETHERSCAN_API_KEY=YOUR_ETHERSCAN_API_KEY
 PRIVATE_KEY=YOUR_SEPOLIA_TESTNET_PRIVATE_KEY
+# Optional: wallets to register in the identity registry and fund for the settlement console
+BORROWER_ADDRESS=0x…   # gets 100,000 nhBOND and 10,000,000 nhEUR
+LENDER_ADDRESS=0x…     # gets 10,000,000 nhEUR
 ```
+
+Onboard more desks later with `REPO_DVP=0x… DESK=0x… forge script script/deploy/OnboardDesk.s.sol --rpc-url $SEPOLIA_RPC_URL --broadcast`.
 
 ### 2. Simulate Deployment (Dry-Run)
 
@@ -210,7 +215,7 @@ If Etherscan’s API experiences delays during broadcast, verify manually:
 # Verify RepoDvP
 forge verify-contract <REPO_DVP_ADDRESS> src/RepoDvP.sol:RepoDvP \
   --chain-id 11155111 \
-  --constructor-args $(cast abi-encode "constructor(address,address,address)" $ADMIN $REGISTRY $ORACLE) \
+  --constructor-args $(cast abi-encode "constructor(address,address,uint256,address,address)" $IDENTITY_REGISTRY $ORACLE 345600 $NH_BOND $NH_EUR) \
   --etherscan-api-key $ETHERSCAN_API_KEY
 
 # Verify nhEUR

@@ -60,7 +60,6 @@ interface IRepoDvP {
 
     /* ============ Custom Errors ============ */
 
-    error ZeroIdentityRegistry();
     error ZeroPriceOracle();
     error ZeroMaxPriceAge();
     error StalePrice(uint256 updatedAt, uint256 currentTimestamp);

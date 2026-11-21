@@ -41,5 +41,12 @@ gas-report:
 sizes:
 	@./build.sh -p production -s
 
+# Local testing of the settlement console with MetaMask (see app/README.md).
+local-chain:
+	anvil --hardfork osaka
+
+local-deploy:
+	@./script/local/deploy-local.sh
+
 clean:
 	forge clean && rm -rf ./abi && rm -rf ./bytecode && rm -rf ./types

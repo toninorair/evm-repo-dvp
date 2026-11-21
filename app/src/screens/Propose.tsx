@@ -1,26 +1,31 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { isAddress, parseUnits, type Address } from 'viem'
-import { backend, DEMO_DESKS } from '../lib/backend'
-import { amount, bps, eur, price } from '../lib/format'
+import { Check, Empty } from '../components/ui'
+import { backend } from '../lib/backend'
+import { amount, bps, duration, eur, price } from '../lib/format'
 import {
   BPS,
-  MAX_HAIRCUT_BPS,
-  MAX_TENOR_SECONDS,
-  ZERO,
+  MAX_INITIAL_MARGIN_BPS,
+  MAX_TERM_SECONDS,
+  PRICE_PRECISION,
   collateralValue,
   interestFor,
-  requiredOpeningValue,
-  unitsFor,
-  WAD,
+  openingCollateral,
+  same,
 } from '../lib/repo'
-import { useLedger } from '../lib/store'
+import { useLedger, useNow } from '../lib/store'
 
-const presets: [string, number][] = [
-  ['O/N', 1],
-  ['1W', 7],
-  ['2W', 14],
-  ['1M', 30],
-  ['3M', 90],
+type Unit = 'm' | 'h' | 'd'
+const unitSeconds: Record<Unit, number> = { m: 60, h: 3600, d: 86_400 }
+const unitLabel: Record<Unit, string> = { m: 'minutes', h: 'hours', d: 'days' }
+
+/** Short presets are there for testing: a 10-minute repo reaches maturity (and default) within a session. */
+const termPresets: [string, number, Unit][] = [
+  ['10m', 10, 'm'],
+  ['1h', 1, 'h'],
+  ['O/N', 1, 'd'],
+  ['1W', 7, 'd'],
+  ['1M', 30, 'd'],
 ]
 
 function toWad(v: string) {
@@ -30,95 +35,131 @@ function toWad(v: string) {
     return 0n
   }
 }
+const int = (v: string) => Math.max(0, Math.floor(Number(v) || 0))
+
+function Duration({ id, label, value, unit, onValue, onUnit, hint }: { id: string; label: string; value: string; unit: Unit; onValue(v: string): void; onUnit(u: Unit): void; hint?: string }) {
+  return (
+    <div className="field">
+      <label htmlFor={id}>{label}</label>
+      <div style={{ display: 'flex', gap: 8 }}>
+        <input id={id} inputMode="decimal" value={value} onChange={(e) => onValue(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
+        <select aria-label={`${label} unit`} value={unit} onChange={(e) => onUnit(e.target.value as Unit)} style={{ height: 44, padding: '0 10px', border: '1px solid var(--line)', background: 'var(--surface)', font: 'inherit' }}>
+          {(Object.keys(unitLabel) as Unit[]).map((u) => (
+            <option key={u} value={u}>
+              {unitLabel[u]}
+            </option>
+          ))}
+        </select>
+      </div>
+      {hint && <span className="hint">{hint}</span>}
+    </div>
+  )
+}
 
 export function Propose() {
-  const { snapshot, account, checks, demo, busy, connect, run } = useLedger()
-  const [asBorrower, setAsBorrower] = useState(true)
-  const [rfq, setRfq] = useState(false)
-  const [counterparty, setCounterparty] = useState<string>(demo ? DEMO_DESKS.B : '')
-  const [cash, setCash] = useState('10000000')
+  const { snapshot, account, checks, busy, connect, run, href, roles } = useLedger()
+  const now = useNow() // chain-aligned, so the accept deadline is measured on the chain's clock
+  const [lender, setLender] = useState<string>(roles.lender ?? '')
+  useEffect(() => {
+    if (roles.lender) setLender((cur) => cur || roles.lender!)
+  }, [roles.lender])
+  const [cash, setCash] = useState('1000000')
   const [rate, setRate] = useState('350')
-  const [haircut, setHaircut] = useState('200')
-  const [days, setDays] = useState('7')
-  const [units, setUnits] = useState<string>()
+  const [initial, setInitial] = useState('200')
+  const [maint, setMaint] = useState('100')
+  const [term, setTerm] = useState('10')
+  const [termUnit, setTermUnit] = useState<Unit>('m')
+  const [cure, setCure] = useState('3')
+  const [cureUnit, setCureUnit] = useState<Unit>('m')
+  const [window_, setWindow] = useState('2')
+  const [windowUnit, setWindowUnit] = useState<Unit>('h')
+  const [tolerance, setTolerance] = useState('100')
+  const [lenderVerified, setLenderVerified] = useState<boolean>()
+
+  useEffect(() => {
+    setLenderVerified(undefined)
+    if (!isAddress(lender)) return
+    let live = true
+    backend
+      .isVerified(lender as Address)
+      .then((v) => live && setLenderVerified(v))
+      .catch(() => undefined)
+    return () => {
+      live = false
+    }
+  }, [lender])
 
   const nav = snapshot?.oracle.price ?? 0n
-  const maint = snapshot?.risk.maintenanceMarginBps ?? 100
 
   const q = useMemo(() => {
-    const cashW = toWad(cash)
-    const rateN = Math.max(0, Math.floor(Number(rate) || 0))
-    const hcN = Math.max(0, Math.floor(Number(haircut) || 0))
-    const tenorS = Math.round((Number(days) || 0) * 86_400)
-    const hcOk = hcN <= MAX_HAIRCUT_BPS
-    const req = hcOk ? requiredOpeningValue(cashW, hcN) : 0n
-    const minUnitsRaw = unitsFor(req, nav)
-    const minUnits = ((minUnitsRaw + WAD - 1n) / WAD) * WAD // whole units
-    const unitsW = units === undefined ? minUnits : toWad(units)
-    const interest = interestFor(cashW, rateN, tenorS)
-    const value = collateralValue(unitsW, nav)
-    const cpOk = rfq || (isAddress(counterparty) && counterparty.toLowerCase() !== account?.toLowerCase())
+    const borrowAmount = toWad(cash)
+    const repoRateBps = int(rate)
+    const initialMarginBps = int(initial)
+    const maintenanceMarginBps = int(maint)
+    const termSeconds = Math.round((Number(term) || 0) * unitSeconds[termUnit])
+    const curePeriodSeconds = Math.round((Number(cure) || 0) * unitSeconds[cureUnit])
+    const windowSeconds = Math.round((Number(window_) || 0) * unitSeconds[windowUnit])
+    const tolBps = Math.min(5_000, int(tolerance))
+    const required = openingCollateral(borrowAmount, initialMarginBps, nav)
+    // Cap = collateral needed if NAV falls by the tolerance before the lender accepts.
+    const floorNav = (nav * (BPS - BigInt(tolBps))) / BPS
+    const maxCollateralAmount = openingCollateral(borrowAmount, initialMarginBps, floorNav)
+    const atMaturity = interestFor(borrowAmount, repoRateBps, termSeconds)
     const errors: string[] = []
-    if (cashW <= 0n) errors.push('Enter the cash amount.')
-    if (!hcOk) errors.push('Haircut must be at most 5,000 bps.')
-    if (tenorS <= 0 || tenorS > MAX_TENOR_SECONDS) errors.push('Tenor must be between 1 and 365 days.')
-    if (!cpOk) errors.push('Enter a valid counterparty address.')
-    if (value < req) errors.push('Collateral is below the opening requirement at the current NAV.')
+    if (!isAddress(lender)) errors.push('Enter the lender’s wallet address.')
+    else if (same(lender, account)) errors.push('The lender must be a different wallet from yours.')
+    if (borrowAmount <= 0n) errors.push('Enter the cash amount to borrow.')
+    if (initialMarginBps > MAX_INITIAL_MARGIN_BPS) errors.push('Initial margin must be at most 5,000 bps.')
+    if (maintenanceMarginBps >= initialMarginBps) errors.push('Maintenance margin must be below the initial margin.')
+    if (termSeconds <= 0 || termSeconds > MAX_TERM_SECONDS) errors.push('Term must be between 1 second and 365 days.')
+    if (curePeriodSeconds <= 0 || curePeriodSeconds > termSeconds) errors.push('Cure period must be positive and no longer than the term.')
+    if (windowSeconds <= 0) errors.push('Give the lender time to accept.')
+    if (nav <= 0n) errors.push('The oracle has no NAV yet.')
     return {
-      cashW,
-      rateN,
-      hcN,
-      tenorS,
-      req,
-      minUnits,
-      unitsW,
-      interest,
-      value,
+      borrowAmount,
+      repoRateBps,
+      initialMarginBps,
+      maintenanceMarginBps,
+      termSeconds,
+      curePeriodSeconds,
+      windowSeconds,
+      tolBps,
+      required,
+      maxCollateralAmount,
+      floorNav,
+      atMaturity,
+      // NAV at which the freshly opened repo would be callable.
+      callNav: required > 0n ? (((borrowAmount * (BPS + BigInt(maintenanceMarginBps))) / BPS) * PRICE_PRECISION) / required : 0n,
       errors,
-      overBps: req > 0n ? Number(((value - req) * BPS) / req) : 0,
     }
-  }, [cash, rate, haircut, days, units, nav, rfq, counterparty, account])
+  }, [cash, rate, initial, maint, term, termUnit, cure, cureUnit, window_, windowUnit, tolerance, nav, lender, account])
 
-  const balanceShort = checks
-    ? asBorrower
-      ? checks.bondBalance < q.unitsW
-      : checks.cashBalance < q.cashW
-    : false
+  if (!snapshot) return <Empty title="Loading market data…" />
+
+  const enoughBond = checks ? checks.bondBalance - checks.bondFrozenTokens >= q.maxCollateralAmount : undefined
+  const blocked = !!checks && (!checks.verified || checks.bondPaused || checks.bondFrozen)
 
   const submit = async () => {
     if (!account) return connect()
-    let newId: bigint | undefined
+    let id: bigint | undefined
     const ok = await run('Proposal', async (onStep) => {
-      newId = await backend.propose(
+      id = await backend.propose(
         {
-          counterparty: rfq ? ZERO : (counterparty as Address),
-          collateralAmount: q.unitsW,
-          cashAmount: q.cashW,
-          repoRateBps: q.rateN,
-          tenorSeconds: q.tenorS,
-          haircutBps: q.hcN,
-          asBorrower,
+          lender: lender as Address,
+          borrowAmount: q.borrowAmount,
+          repoRateBps: q.repoRateBps,
+          initialMarginBps: q.initialMarginBps,
+          maintenanceMarginBps: q.maintenanceMarginBps,
+          termSeconds: q.termSeconds,
+          curePeriodSeconds: q.curePeriodSeconds,
+          maxCollateralAmount: q.maxCollateralAmount,
+          acceptDeadline: now + q.windowSeconds,
         },
         onStep,
       )
     })
-    if (ok && newId !== undefined) window.location.hash = `#/repo/${newId}`
+    if (ok && id !== undefined) window.location.hash = href(`/repo/${id}`)
   }
-
-  const choice = (on: boolean) => ({
-    display: 'flex',
-    flexDirection: 'column' as const,
-    alignItems: 'flex-start',
-    gap: 2,
-    padding: 16,
-    border: `1px solid ${on ? 'var(--ink)' : 'var(--line)'}`,
-    background: on ? 'var(--surface)' : 'transparent',
-    color: 'var(--ink)',
-    textAlign: 'left' as const,
-    cursor: 'pointer',
-    minHeight: 44,
-    transition: 'border-color 160ms, background-color 160ms',
-  })
 
   const legend = (n: number, text: string) => (
     <legend style={{ padding: '0 0 12px', width: '100%', borderBottom: '1px solid var(--ink)' }}>
@@ -127,109 +168,85 @@ export function Propose() {
       </span>
     </legend>
   )
-
-  const check = (label: string, ok: boolean | undefined, fail = 'Fail') => (
-    <div className="row">
-      <span>{label}</span>
-      <span style={{ color: ok === undefined ? 'var(--muted)' : ok ? 'var(--ok)' : 'var(--warn)' }}>{ok === undefined ? '—' : ok ? 'Pass' : fail}</span>
-    </div>
-  )
+  const fs = { margin: 0, padding: 0, border: 0, display: 'flex', flexDirection: 'column' as const, gap: 16 }
+  const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
       <section className="reveal" style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 760 }}>
-        <a href="#/" className="small muted" style={{ textDecoration: 'none' }}>
-          ← Repo book
+        <a href={href('/')} className="small muted" style={{ textDecoration: 'none' }}>
+          ← Positions
         </a>
         <h1>Propose a repo.</h1>
         <p className="muted" style={{ margin: 0, fontSize: 15 }}>
-          Set the terms on-chain. When your counterparty accepts, both legs settle in one transaction, or neither does.
+          You are the borrower: you post nhBOND and receive nhEUR. The lender you name accepts before the deadline, and both legs settle in that one transaction, or neither does.
         </p>
       </section>
 
       <section className="split">
         <form className="main reveal d1" style={{ display: 'flex', flexDirection: 'column', gap: 32 }} onSubmit={(e) => (e.preventDefault(), submit())}>
-          <fieldset style={{ margin: 0, padding: 0, border: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {legend(1, 'Your role')}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-              <button type="button" aria-pressed={asBorrower} style={choice(asBorrower)} onClick={() => setAsBorrower(true)}>
-                <span style={{ fontWeight: 500 }}>Borrower</span>
-                <span className="small muted">Post nhBOND, receive nhEUR when the lender accepts.</span>
-              </button>
-              <button type="button" aria-pressed={!asBorrower} style={choice(!asBorrower)} onClick={() => setAsBorrower(false)}>
-                <span style={{ fontWeight: 500 }}>Lender</span>
-                <span className="small muted">Fund nhEUR against nhBOND held in escrow.</span>
-              </button>
+          <fieldset style={fs}>
+            {legend(1, 'Lender')}
+            <div className="field">
+              <label htmlFor="lender">Lender Wallet Address</label>
+              <input id="lender" value={lender} onChange={(e) => setLender(e.target.value.trim())} placeholder="0x…" spellCheck={false} />
+              {lender && !isAddress(lender) && <span className="hint bad">That isn’t a valid address.</span>}
+              {isAddress(lender) && lenderVerified === false && <span className="hint bad">Not verified in the identity registry: proposeRepo() will revert.</span>}
+              {isAddress(lender) && lenderVerified && <span className="hint">Verified in the ERC-3643 identity registry.</span>}
             </div>
           </fieldset>
 
-          <fieldset style={{ margin: 0, padding: 0, border: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {legend(2, 'Counterparty')}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12 }}>
-              <button type="button" aria-pressed={!rfq} style={choice(!rfq)} onClick={() => setRfq(false)}>
-                <span style={{ fontWeight: 500 }}>Bilateral</span>
-                <span className="small muted">Name a KYC-verified {asBorrower ? 'lender' : 'borrower'}.</span>
-              </button>
-              <button type="button" aria-pressed={rfq} style={choice(rfq)} onClick={() => setRfq(true)}>
-                <span style={{ fontWeight: 500 }}>Open RFQ</span>
-                <span className="small muted">Any verified {asBorrower ? 'lender' : 'borrower'} may accept.</span>
-              </button>
-            </div>
-            {!rfq && (
-              <div className="field reveal">
-                <label htmlFor="cp">{asBorrower ? 'Lender' : 'Borrower'} address</label>
-                <input id="cp" value={counterparty} onChange={(e) => setCounterparty(e.target.value.trim())} placeholder="0x7a3f2b8e04d1c5a9f0e6b3c2d8a71e44b0c9c19e" spellCheck={false} />
-                {counterparty && !isAddress(counterparty) && <span className="hint bad">That isn't a valid address.</span>}
-                {isAddress(counterparty) && <span className="hint">KYC is checked again on acceptance.</span>}
-              </div>
-            )}
-          </fieldset>
-
-          <fieldset style={{ margin: 0, padding: 0, border: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            {legend(3, 'Terms')}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }}>
+          <fieldset style={fs}>
+            {legend(2, 'Cash and rate')}
+            <div style={grid}>
               <div className="field">
-                <label htmlFor="cash">Cash · nhEUR</label>
+                <label htmlFor="cash">Borrow · nhEUR</label>
                 <input id="cash" inputMode="decimal" value={cash} onChange={(e) => setCash(e.target.value)} />
               </div>
               <div className="field">
-                <label htmlFor="rate">Repo rate · bps p.a.</label>
+                <label htmlFor="rate">Repo Rate · bps p.a.</label>
                 <input id="rate" inputMode="numeric" value={rate} onChange={(e) => setRate(e.target.value)} />
-                <span className="hint">{bps(q.rateN)} Actual/360</span>
-              </div>
-              <div className="field">
-                <label htmlFor="hc">Haircut · bps (max 5,000)</label>
-                <input id="hc" inputMode="numeric" value={haircut} onChange={(e) => setHaircut(e.target.value)} />
-              </div>
-              <div className="field">
-                <label htmlFor="tenor">Tenor · days (max 365)</label>
-                <input id="tenor" inputMode="decimal" value={days} onChange={(e) => setDays(e.target.value)} />
+                <span className="hint">{bps(q.repoRateBps)} Actual/360</span>
               </div>
             </div>
+          </fieldset>
+
+          <fieldset style={fs}>
+            {legend(3, 'Margin')}
+            <div style={grid}>
+              <div className="field">
+                <label htmlFor="im">Initial Margin · bps (max 5,000)</label>
+                <input id="im" inputMode="numeric" value={initial} onChange={(e) => setInitial(e.target.value)} />
+                <span className="hint">Collateral opens at {bps(10_000 + q.initialMarginBps)} of cash</span>
+              </div>
+              <div className="field">
+                <label htmlFor="mm">Maintenance Margin · bps</label>
+                <input id="mm" inputMode="numeric" value={maint} onChange={(e) => setMaint(e.target.value)} />
+                <span className="hint">Callable below {bps(10_000 + q.maintenanceMarginBps)} of the repurchase price</span>
+              </div>
+            </div>
+          </fieldset>
+
+          <fieldset style={fs}>
+            {legend(4, 'Timing')}
+            <div style={grid}>
+              <Duration id="term" label="Term" value={term} unit={termUnit} onValue={setTerm} onUnit={setTermUnit} hint={q.termSeconds ? `Maturity ${duration(q.termSeconds)} after acceptance` : undefined} />
+              <Duration id="cure" label="Cure period" value={cure} unit={cureUnit} onValue={setCure} onUnit={setCureUnit} hint="Time you get to top up after a margin call" />
+            </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
-              {presets.map(([label, d]) => (
-                <button key={label} type="button" className="chip" aria-pressed={Number(days) === d} onClick={() => setDays(String(d))}>
+              {termPresets.map(([label, v, u]) => (
+                <button key={label} type="button" className="chip" aria-pressed={Number(term) === v && termUnit === u} onClick={() => (setTerm(String(v)), setTermUnit(u))}>
                   {label}
                 </button>
               ))}
             </div>
-            <div className="field">
-              <label htmlFor="units">Collateral · nhBOND units</label>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <input
-                  id="units"
-                  inputMode="decimal"
-                  style={{ flex: 1, minWidth: 0 }}
-                  value={units ?? amount(q.minUnits, 0).replace(/,/g, '')}
-                  onChange={(e) => setUnits(e.target.value)}
-                />
-                <button type="button" className="btn quiet" onClick={() => setUnits(undefined)}>
-                  Use minimum
-                </button>
+            <div style={grid}>
+              <Duration id="window" label="Lender must accept within" value={window_} unit={windowUnit} onValue={setWindow} onUnit={setWindowUnit} />
+              <div className="field">
+                <label htmlFor="tol">NAV Tolerance · bps</label>
+                <input id="tol" inputMode="numeric" value={tolerance} onChange={(e) => setTolerance(e.target.value)} />
+                <span className="hint">Acceptance still succeeds if NAV falls to {price(q.floorNav)}</span>
               </div>
-              <span className={`hint ${q.value < q.req ? 'bad' : ''}`}>
-                Minimum {amount(q.minUnits, 0)} at {price(nav)} · {q.value >= q.req ? `${bps(q.overBps)} over requirement` : 'below requirement'}
-              </span>
             </div>
           </fieldset>
         </form>
@@ -242,16 +259,17 @@ export function Propose() {
           <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
             <div className="row">
               <span className="muted">Purchase price</span>
-              <span>{eur(q.cashW)}</span>
+              <span>{eur(q.borrowAmount)}</span>
             </div>
             <div className="row">
-              <span className="muted">Interest · Act/360</span>
-              <span>{eur(q.interest)}</span>
+              <span className="muted">Interest to maturity · Act/360</span>
+              <span>{eur(q.atMaturity)}</span>
             </div>
             <div className="row" style={{ paddingTop: 12, borderTop: '1px solid var(--line)', fontWeight: 500 }}>
-              <span>Repurchase price</span>
-              <span>{eur(q.cashW + q.interest)}</span>
+              <span>Repurchase price at maturity</span>
+              <span>{eur(q.borrowAmount + q.atMaturity)}</span>
             </div>
+            <span className="small muted">Interest keeps accruing after maturity until you settle.</span>
           </div>
           <div style={{ padding: '20px 24px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
             <div className="row">
@@ -259,34 +277,36 @@ export function Propose() {
               <span>{price(nav)}</span>
             </div>
             <div className="row">
-              <span className="muted">Value required to open</span>
-              <span>{eur(q.req)}</span>
+              <span className="muted">nhBOND pulled at today’s NAV</span>
+              <span>{amount(q.required, 4)}</span>
             </div>
             <div className="row">
-              <span className="muted">Collateral value</span>
-              <span>{eur(q.value)}</span>
+              <span className="muted">Worth</span>
+              <span>{eur(collateralValue(q.required, nav))}</span>
             </div>
             <div className="row" style={{ paddingTop: 12, borderTop: '1px solid var(--line)', fontWeight: 500 }}>
-              <span>nhBOND to escrow</span>
-              <span>{amount(q.unitsW, 0)}</span>
+              <span>Collateral cap · approved</span>
+              <span>{amount(q.maxCollateralAmount, 4)} nhBOND</span>
             </div>
-            <span className="small muted">Minimum = cash ÷ (1 − haircut). A margin call is possible below {bps(10_000 + maint)} of the repurchase price.</span>
+            <span className="small muted">acceptRepo() sizes collateral at the NAV when the lender accepts and reverts above this cap. Callable at a NAV below {price(q.callNav)}.</span>
           </div>
           <div style={{ padding: '20px 24px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
             <div style={{ fontWeight: 500, fontSize: 13 }}>Pre-trade checks</div>
-            {check('Your KYC · ComplianceRegistry', checks?.kyc)}
-            {asBorrower && check('ERC-3643 identity · nhBOND', checks?.eligible)}
-            {asBorrower && check('Wallet not frozen', checks ? !checks.frozen : undefined)}
-            {check(asBorrower ? 'nhBOND balance' : 'nhEUR balance', checks ? !balanceShort : undefined, 'Insufficient')}
-            {check('Oracle fresh', snapshot ? !snapshot.oracle.stale : undefined, 'Stale')}
+            <Check label="Your identity · ERC-3643 registry" ok={checks?.verified} fail="Not verified" />
+            <Check label="Lender identity" ok={isAddress(lender) ? lenderVerified : undefined} fail="Not verified" />
+            <Check label="nhBOND available for the cap" ok={enoughBond} fail="Insufficient" detail={checks ? `${amount(checks.bondBalance - checks.bondFrozenTokens, 2)} free` : undefined} />
+            <Check label="nhBOND wallet not frozen" ok={checks ? !checks.bondFrozen : undefined} fail="Frozen" />
+            <Check label="nhBOND transfers live" ok={checks ? !checks.bondPaused : undefined} fail="Paused" />
+            <Check label="Oracle fresh · needed when the lender accepts" ok={!snapshot.oracle.stale} fail="Stale" />
+            <Check label="ETH for gas" ok={checks ? checks.gas > 0n : undefined} fail="Empty" />
           </div>
           <div style={{ padding: '20px 24px 24px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 10 }}>
             {q.errors[0] && account && <span className="small" style={{ color: 'var(--bad)' }}>{q.errors[0]}</span>}
-            <button type="button" className="btn primary block" disabled={busy || (!!account && q.errors.length > 0)} onClick={submit}>
-              {!account ? 'Connect wallet' : `Approve ${asBorrower ? 'nhBOND' : 'nhEUR'} and propose`}
+            <button type="button" className="btn primary block" disabled={busy || (!!account && (q.errors.length > 0 || blocked))} onClick={submit}>
+              {!account ? 'Connect borrower wallet' : 'Approve nhBOND and propose'}
             </button>
             <span className="small muted" style={{ textAlign: 'center' }}>
-              Calls proposeRepo() · cancellable until accepted
+              Approves the cap, then calls proposeRepo(). You can cancel until the lender accepts.
             </span>
           </div>
         </aside>

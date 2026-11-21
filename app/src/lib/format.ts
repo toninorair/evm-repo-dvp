@@ -35,11 +35,13 @@ export function shortAddr(a?: string) {
   return `${a.slice(0, 6)}…${a.slice(-4)}`
 }
 
+/** Term label: "O/N", "7d", "6h", "15m". */
 export function tenor(seconds: number) {
-  const d = seconds / 86_400
-  if (d === 1) return 'O/N'
-  if (Number.isInteger(d)) return `${d}d`
-  return `${nf(0, 1).format(seconds / 3600)}h`
+  if (seconds === 86_400) return 'O/N'
+  if (seconds % 86_400 === 0) return `${seconds / 86_400}d`
+  if (seconds % 3600 === 0) return `${seconds / 3600}h`
+  if (seconds % 60 === 0) return `${seconds / 60}m`
+  return `${seconds}s`
 }
 
 const dateFmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })

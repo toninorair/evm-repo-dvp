@@ -4,6 +4,7 @@ pragma solidity 0.8.34;
 import { RepoDvP } from "../../src/RepoDvP.sol";
 import { RepoTestBase } from "../utils/RepoTestBase.sol";
 import { IRepoDvP } from "../../src/interfaces/IRepoDvP.sol";
+import { MockIdentityRegistry } from "../mock/MockIdentityRegistry.sol";
 
 /// @title  RepoDvPTest
 /// @notice Unit tests for RepoDvP settlement engine covering DvP, RvP, and EIP-712 orders.
@@ -194,6 +195,28 @@ contract RepoDvPTest is RepoTestBase {
             MAX_COLLATERAL_AMOUNT,
             uint40(block.timestamp + 1 days)
         );
+    }
+
+    function test_ProposeRepo_RevertsWhenLenderNotVerifiedOnCollateralRegistry() public {
+        vm.prank(compliance);
+        identityRegistry.deleteIdentity(bankB);
+
+        vm.expectRevert(abi.encodeWithSelector(IRepoDvP.NotKYCVerified.selector, bankB));
+        _propose(uint40(block.timestamp + 1 days));
+    }
+
+    function test_ProposeRepo_ChecksCashTokenRegistryLive() public {
+        // nhEUR moves to its own registry after RepoDvP is deployed; only the borrower is onboarded there.
+        MockIdentityRegistry cashRegistry = new MockIdentityRegistry();
+        cashRegistry.setVerified(bankA, true);
+        vm.prank(admin);
+        cashToken.setIdentityRegistry(address(cashRegistry));
+
+        vm.expectRevert(abi.encodeWithSelector(IRepoDvP.NotKYCVerified.selector, bankB));
+        _propose(uint40(block.timestamp + 1 days));
+
+        cashRegistry.setVerified(bankB, true);
+        assertEq(_propose(uint40(block.timestamp + 1 days)), 1);
     }
 
     function _propose(uint40 acceptDeadline) internal returns (uint256) {

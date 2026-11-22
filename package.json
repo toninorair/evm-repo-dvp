@@ -11,6 +11,7 @@
     "coverage": "make -B coverage",
     "doc": "forge doc --serve --port 4000",
     "lint-staged": "lint-staged",
+    "postinstall": "if [ ! -f lib/ERC-3643/package.json ]; then git submodule update --init --recursive; fi && npm --prefix lib/ERC-3643 install --ignore-scripts --no-audit --no-fund",
     "prepare": "husky",
     "prettier": "prettier --write 'src/**/*.sol' 'test/**/*.sol'",
     "slither": "forge build --build-info --skip '*/test/**' --skip '*/script/**' --force && slither --compile-force-framework foundry --ignore-compile --config-file slither.config.json --fail-high .",

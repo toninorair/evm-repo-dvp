@@ -6,15 +6,6 @@ Smart contracts and settlement console for tokenised EUR sovereign bond repurcha
 
 ![Nordhaven Smart Contract Architecture](diagrams/contract-architecture.svg)
 
-![Tokenised Repo Lifecycle](diagrams/repo-lifecycle.svg)
-
-## Case Study Deliverables
-
-- **Live Sepolia Settlement Console (GitHub Pages):** [**https://toninorair.github.io/evm-repo-dvp/**](https://toninorair.github.io/evm-repo-dvp/)
-- **Part 1 — Concept Explainer (Trading Desk):** [`docs/CONCEPT_EXPLAINER.md`](docs/CONCEPT_EXPLAINER.md)
-- **Part 2 — Considerations & Decision Memo:** [`docs/STEERING_COMMITTEE_MEMO.md`](docs/STEERING_COMMITTEE_MEMO.md)
-- **Part 3 — Architecture & Design Notes:** [`docs/ARCHITECTURE_SPEC.md`](docs/ARCHITECTURE_SPEC.md) · [`docs/ARCHITECTURAL_NOTES.md`](docs/ARCHITECTURAL_NOTES.md) · [`app/README.md`](app/README.md)
-
 ## Contracts & Key Assumptions
 
 | Contract                                 | Standard / Model          | Purpose                                                                 | Sepolia Address                                                                                                                 |
@@ -24,6 +15,8 @@ Smart contracts and settlement console for tokenised EUR sovereign bond repurcha
 | [`nhEUR.sol`](src/nhEUR.sol)             | Tokenised Bank Deposit    | Permissioned EUR cash leg (JPM Coin model) sharing `IdentityRegistry`   | [`0xeEe12a05026bB38Ddb042e9DC16A3120EB637584`](https://sepolia.etherscan.io/address/0xeEe12a05026bB38Ddb042e9DC16A3120EB637584) |
 | [`nhNAVOracle.sol`](src/nhNAVOracle.sol) | Chainlink `AggregatorV3`  | Calculation-agent EUR NAV feed (8 decimals)                             | [`0x8fa64250d92e397249bEacFb335B73016fCEC1be`](https://sepolia.etherscan.io/address/0x8fa64250d92e397249bEacFb335B73016fCEC1be) |
 | `IdentityRegistry`                       | Official ERC-3643 (T-REX) | On-chain `ONCHAINID` verification enforced by both tokens and `RepoDvP` | [`0xEBC4c98BD77287090Bf2A29357BF846f61eaB98B`](https://sepolia.etherscan.io/address/0xEBC4c98BD77287090Bf2A29357BF846f61eaB98B) |
+
+![Tokenised Repo Lifecycle](diagrams/repo-lifecycle.svg)
 
 **Three core architectural calls:**
 
@@ -38,10 +31,16 @@ Smart contracts and settlement console for tokenised EUR sovereign bond repurcha
 Requires [Foundry](https://getfoundry.sh/) and Node.js >= 18.
 
 ```bash
+git clone --recursive <repo-url>
+cd evm-dvp-repo
+
+# Installs root tooling, initializes submodules if needed, and installs ERC-3643's Solidity deps
 npm install && npm --prefix app install
 forge build
 forge test
 ```
+
+_(If you already cloned without `--recursive`, `npm install` will initialize submodules and install `lib/ERC-3643` dependencies automatically via its `postinstall` hook, or you can run `git submodule update --init --recursive && npm --prefix lib/ERC-3643 install --ignore-scripts` manually.)_
 
 Runs 50 unit, integration, fuzz (5,000 runs), and invariant (512 runs) tests across ERC-3643 compliance, atomic DvP/RvP, margin cures, and default netting.
 

@@ -10,7 +10,7 @@ import { Terms } from './position/Terms'
 import { TopUp } from './position/TopUp'
 
 export function Position({ id }: { id: bigint }) {
-  const { snapshot, account, tab, href } = useLedger()
+  const { snapshot, account, href } = useLedger()
   const now = useNow()
   const repo = snapshot?.repos.find((r) => r.id === id)
 
@@ -33,7 +33,7 @@ export function Position({ id }: { id: bigint }) {
   const expired = s === RepoStatus.Proposed && now > repo.order.acceptDeadline
   const cureLeft = s === RepoStatus.MarginCalled ? repo.state.cureDeadline - now : 0
   const cureProgress = repo.order.curePeriodSeconds > 0 ? Math.max(0, Math.min(100, (1 - cureLeft / repo.order.curePeriodSeconds) * 100)) : 100
-  const role = isBorrower ? 'You are the borrower' : isLender ? 'You are the lender' : account ? `This ${tab} wallet is not a party to this repo` : `Connect the ${tab} wallet to act`
+  const role = isBorrower ? 'You are the borrower' : isLender ? 'You are the lender' : ''
 
   return (
     <div className="stack gap-10">
@@ -66,7 +66,8 @@ export function Position({ id }: { id: bigint }) {
           </div>
           <p className="muted lead">
             <AddressLink address={repo.order.borrower} me={account} /> {isBorrower ? 'borrow' : 'borrows'} {eur(repo.order.borrowAmount)} from{' '}
-            <AddressLink address={repo.order.lender} me={account} /> against nhBOND · {tenor(repo.order.termSeconds)} at {bps(repo.order.repoRateBps)} · {role}
+            <AddressLink address={repo.order.lender} me={account} /> against nhBOND · {tenor(repo.order.termSeconds)} at {bps(repo.order.repoRateBps)}
+            {role ? ` · ${role}` : ''}
           </p>
         </div>
         {s === RepoStatus.MarginCalled && (

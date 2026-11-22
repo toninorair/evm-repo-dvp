@@ -30,7 +30,7 @@ export function TopUp({ repo }: { repo: Repo }) {
       <div className="panel stack gap-5" style={{ borderColor: called ? 'var(--ink)' : undefined, padding: 28 }}>
         <div className="row row-baseline" style={{ flexWrap: 'wrap' }}>
           <span className="fw-500" style={{ fontSize: 15 }}>
-            Post more nhBOND to escrow
+            Post more nhBOND to DvP Repo Contract
           </span>
           <span className="small muted">Top Up Collateral</span>
         </div>

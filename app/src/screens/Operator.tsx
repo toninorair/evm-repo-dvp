@@ -156,7 +156,14 @@ export function Operator() {
   const countryCode = Number(country)
   const isOperator = !!rights && rights.bondRegistryAgent && rights.cashRegistryAgent
   const badInput = bondAmount < 0n || cashAmount < 0n || !Number.isInteger(countryCode) || countryCode <= 0 || countryCode > 65535
-  const tag = (w: Address) => (same(w, roles.borrower) ? 'Borrower' : same(w, roles.lender) ? 'Lender' : same(w, roles.agent) ? 'Operator' : '')
+  const tag = (w: Address) => {
+    if (same(w, d.repoDvP)) return 'DvP Repo Contract'
+    const labels: string[] = []
+    if (same(w, roles.borrower) || snapshot.repos.some((r) => same(r.order.borrower, w))) labels.push('Borrower')
+    if (same(w, roles.lender) || snapshot.repos.some((r) => same(r.order.lender, w))) labels.push('Lender')
+    if (same(w, roles.agent)) labels.push('Operator')
+    return labels.join(' · ')
+  }
   const open = snapshot.repos.filter((r) => isOpen(r.state.status))
 
   const onboard = () =>
@@ -318,7 +325,7 @@ export function Operator() {
                 <thead>
                   <tr>
                     <th>Wallet</th>
-                    <th>Console Role</th>
+                    <th>Role</th>
                     <th>Identity</th>
                     <th>Registration Tx</th>
                     {!shared && <th>Registries</th>}

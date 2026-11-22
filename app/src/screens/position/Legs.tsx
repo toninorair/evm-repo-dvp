@@ -40,14 +40,12 @@ export function Legs({ repo, now }: { repo: Repo; now: number }) {
             <span className={`small ${started ? 'text-ok' : 'muted'}`}>{started ? 'Settled' : s === RepoStatus.Cancelled ? 'Never opened' : 'On acceptance'}</span>
           </div>
           <div className="stack gap-3">
-            <LegFlow from={borrower} to="Escrow" value={opened !== undefined ? `${amount(opened, 4)} nhBOND` : 'Sized at the NAV on acceptance'} />
+            <LegFlow from={borrower} to="DvP Repo Contract" value={opened !== undefined ? `${amount(opened, 4)} nhBOND` : 'Sized at the NAV on acceptance'} />
             <LegFlow from={lender} to={borrower} value={`${amount(repo.order.borrowAmount)} nhEUR`} last />
           </div>
           <div className="small muted">
             {started ? (
-              <>
-                One transaction · {dateTime(repo.state.startTime)} <TxLink hash={repo.history.txs.opened} />
-              </>
+              <TxLink hash={repo.history.txs.opened}>View Transaction</TxLink>
             ) : (
               'Both legs settle atomically on acceptance, or the transaction reverts.'
             )}
@@ -63,8 +61,8 @@ export function Legs({ repo, now }: { repo: Repo; now: number }) {
           <div className="stack gap-3">
             {defaulted ? (
               <>
-                <LegFlow from="Escrow" to={lender} value={`${amount(defaulted.seized, 4)} nhBOND seized`} />
-                <LegFlow from="Escrow" to={borrower} value={`${amount(defaulted.surplus, 4)} nhBOND surplus`} last />
+                <LegFlow from="DvP Repo Contract" to={lender} value={`${amount(defaulted.seized, 4)} nhBOND seized`} />
+                <LegFlow from="DvP Repo Contract" to={borrower} value={`${amount(defaulted.surplus, 4)} nhBOND surplus`} last />
               </>
             ) : (
               <>
@@ -74,16 +72,16 @@ export function Legs({ repo, now }: { repo: Repo; now: number }) {
                   value={`${amount(settled ? settled.totalRepaid : isOpen(s) ? repurchasePrice(repo, now) : repo.order.borrowAmount)} nhEUR`}
                 />
                 <LegFlow
-                  from="Escrow"
+                  from="DvP Repo Contract"
                   to={borrower}
-                  value={settled ? `${amount(settled.collateralReturned, 4)} nhBOND` : isOpen(s) ? `${amount(repo.state.collateralAmount, 4)} nhBOND` : 'All escrowed nhBOND'}
+                  value={settled ? `${amount(settled.collateralReturned, 4)} nhBOND` : isOpen(s) ? `${amount(repo.state.collateralAmount, 4)} nhBOND` : 'All locked nhBOND'}
                   last
                 />
               </>
             )}
           </div>
           <div className="small muted">
-            {closed ? <TxLink hash={repo.history.txs.closed}>Transaction</TxLink> : 'The borrower may settle at any time; interest stops at the settlement second.'}
+            {closed ? <TxLink hash={repo.history.txs.closed}>View Transaction</TxLink> : 'The borrower may settle at any time; interest stops at the settlement second.'}
           </div>
         </div>
       </div>

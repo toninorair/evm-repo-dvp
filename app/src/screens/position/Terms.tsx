@@ -33,7 +33,7 @@ export function Terms({ repo }: { repo: Repo }) {
       </dl>
       {repo.history.txs.proposed && (
         <span className="small muted">
-          Proposed in <TxLink hash={repo.history.txs.proposed} />
+          <TxLink hash={repo.history.txs.proposed}>View Transaction</TxLink>
         </span>
       )}
     </div>

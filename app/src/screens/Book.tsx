@@ -102,15 +102,15 @@ export function Book() {
 
       {view.needsYou.length > 0 && (
         <section className="reveal banner warn">
-          <strong style={{ fontWeight: 600 }}>Waiting on you:</strong>
+          <strong style={{ fontWeight: 600 }}>Action required:</strong>
           {view.needsYou.map((r) => (
             <a key={String(r.id)} href={href(`/repo/${r.id}`)}>
               {formatRepoId(r.id)} ·{' '}
               {r.state.status === RepoStatus.Proposed
-                ? 'accept or let lapse'
+                ? 'Pending acceptance'
                 : r.state.status === RepoStatus.MarginCalled && same(r.order.borrower, account)
-                  ? 'cure the margin call'
-                  : 'default claimable'}
+                  ? 'Margin call cure due'
+                  : 'Eligible for default close-out'}
             </a>
           ))}
         </section>
@@ -125,7 +125,7 @@ export function Book() {
           <span className="small muted">{view.rows.filter((r) => r.m).length || 'No'} open trades shown · nhEUR</span>
         </div>
         <div>
-          <span className="small muted">Collateral in escrow (MTM)</span>
+          <span className="small muted">Collateral in DvP Repo Contract (MTM)</span>
           <span className="figure fig-md">
             <Tween value={Number(formatUnits(collateralValue(view.units, oracle.price), 18))} format={(n) => eurCompact(BigInt(Math.round(n)) * 10n ** 18n)} />
           </span>

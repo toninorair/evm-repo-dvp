@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AddressLink, Check, Gauge, Tween, TxLink } from '../../components/ui'
+import { Check, Gauge, Tween, TxLink } from '../../components/ui'
 import { backend } from '../../lib/backend'
 import { amount, bps, dateTime, duration, eur, price, time } from '../../lib/format'
 import { RepoStatus, closeOut, defaultReason, margin, openingCollateral, repurchasePrice, same, type Repo } from '../../lib/repo'
@@ -44,9 +44,6 @@ export function AcceptPanel({ repo }: { repo: Repo }) {
   return (
     <div className="panel panel-pad stack gap-4">
       <h3>{expired ? 'Proposal expired' : 'Awaiting the lender'}</h3>
-      <p className="small muted" style={{ margin: 0 }}>
-        On acceptance RepoDvP pulls {amount(required, 4)} nhBOND (at {price(nav)}) from the borrower into escrow and {eur(repo.order.borrowAmount)} from the lender to the borrower, atomically.
-      </p>
       <div className="stack gap-2 small">
         {isLender && lenderChecks.map((c) => <Check key={c.label} {...c} />)}
         {tradeChecks.map((c) => (
@@ -64,14 +61,9 @@ export function AcceptPanel({ repo }: { repo: Repo }) {
         </button>
       )}
       {isBorrower && (
-        <>
-          <button type="button" className="btn block" disabled={busy} onClick={() => run('Cancellation', (st) => backend.cancel(repo, st))}>
-            Cancel proposal
-          </button>
-          <span className="small muted">
-            Only <AddressLink address={repo.order.lender} /> can accept. They accept it from the Lender tab: {`${window.location.origin}${window.location.pathname}#/lender/repo/${repo.id}`}
-          </span>
-        </>
+        <button type="button" className="btn block" disabled={busy} onClick={() => run('Cancellation', (st) => backend.cancel(repo, st))}>
+          Cancel proposal
+        </button>
       )}
       {account && !isBorrower && !isLender && <span className="small muted">Only the named lender can accept, and only the borrower can cancel.</span>}
     </div>
@@ -236,7 +228,7 @@ export function Outcome({ repo }: { repo: Repo }) {
         </div>
       ))}
       <span className="small">
-        <TxLink hash={repo.history.txs.closed}>View transaction</TxLink>
+        <TxLink hash={repo.history.txs.closed}>View Transaction</TxLink>
       </span>
     </div>
   )

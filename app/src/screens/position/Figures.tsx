@@ -49,7 +49,7 @@ export function Figures({ repo, now }: { repo: Repo; now: number }) {
       <div>
         <span className="small muted">
           {open
-            ? 'Collateral in escrow'
+            ? 'Collateral in DvP Repo Contract'
             : s === RepoStatus.Proposed
               ? 'Collateral at today’s NAV'
               : s === RepoStatus.Settled

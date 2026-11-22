@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1100 440" width="100%" height="100%" font-family="Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">
+  <defs>
+    <marker id="arrow-gray" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#64748B"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#15803D"/>
+    </marker>
+    <filter id="card-shadow" x="-4%" y="-4%" width="108%" height="112%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0F172A" flood-opacity="0.04"/>
+    </filter>
+  </defs>
+
+  <!-- Pure White Background -->
+  <rect width="1100" height="440" fill="#FFFFFF" rx="12"/>
+  <rect x="1" y="1" width="1098" height="438" fill="none" stroke="#E2E8F0" stroke-width="1.5" rx="12"/>
+
+  <!-- STAGE 1: Proposal & Opening Leg (Atomic DvP) -->
+  <g filter="url(#card-shadow)">
+    <rect x="28" y="28" width="308" height="384" rx="10" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+    <rect x="48" y="48" width="32" height="32" rx="8" fill="#DCFCE7" stroke="#86EFAC" stroke-width="1.2"/>
+    <text x="64" y="69" text-anchor="middle" font-size="14" font-weight="700" fill="#166534">1</text>
+    <text x="92" y="62" font-size="10" font-weight="700" fill="#15803D" letter-spacing="0.07em">OPENING LEG</text>
+    <text x="92" y="78" font-size="14" font-weight="700" fill="#0F172A">Proposal &amp; Atomic DvP</text>
+
+    <line x1="48" y1="96" x2="316" y2="96" stroke="#E2E8F0" stroke-width="1"/>
+
+    <!-- Step 1A -->
+    <rect x="48" y="112" width="268" height="114" rx="8" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2"/>
+    <text x="64" y="134" font-size="11.5" font-weight="700" fill="#0F172A">1a. Trade Proposal (Borrower)</text>
+    <text x="64" y="153" font-size="10.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#15803D">proposeRepo()</text>
+    <text x="64" y="172" font-size="11" fill="#475569">Fixes principal, rate, initial &amp; maint.</text>
+    <text x="64" y="188" font-size="11" fill="#475569">margin, tenor, cure window, and</text>
+    <text x="64" y="204" font-size="11" fill="#475569">max collateral slippage cap.</text>
+
+    <!-- Step 1B -->
+    <rect x="48" y="240" width="268" height="152" rx="8" fill="#F0FDF4" stroke="#86EFAC" stroke-width="1.2"/>
+    <text x="64" y="262" font-size="11.5" font-weight="700" fill="#0F172A">1b. Acceptance &amp; Settlement (Lender)</text>
+    <text x="64" y="281" font-size="10.5" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#166534">acceptRepo(repoId)</text>
+    <text x="64" y="301" font-size="11" fill="#1E293B">• Sizes nhBOND at live oracle price</text>
+    <text x="64" y="319" font-size="11" fill="#1E293B">• Locks nhBOND: Borrower → RepoDvP</text>
+    <text x="64" y="337" font-size="11" fill="#1E293B">• Settles nhEUR: Lender → Borrower</text>
+    <rect x="64" y="352" width="236" height="24" rx="5" fill="#DCFCE7"/>
+    <text x="182" y="368" text-anchor="middle" font-size="10.2" font-weight="600" fill="#166534">Single Tx: Both legs settle or revert</text>
+  </g>
+
+  <!-- Arrow Stage 1 -> Stage 2 -->
+  <line x1="336" y1="220" x2="372" y2="220" stroke="#15803D" stroke-width="1.8" marker-end="url(#arrow-green)"/>
+
+  <!-- STAGE 2: Term & Margin Maintenance -->
+  <g filter="url(#card-shadow)">
+    <rect x="378" y="28" width="308" height="384" rx="10" fill="#F8FAFC" stroke="#CBD5E1" stroke-width="1.5"/>
+    <rect x="398" y="48" width="32" height="32" rx="8" fill="#DCFCE7" stroke="#86EFAC" stroke-width="1.2"/>
+    <text x="414" y="69" text-anchor="middle" font-size="14" font-weight="700" fill="#166534">2</text>
+    <text x="442" y="62" font-size="10" font-weight="700" fill="#64748B" letter-spacing="0.07em">ACTIVE TERM</text>
+    <text x="442" y="78" font-size="14" font-weight="700" fill="#0F172A">Accrual &amp; Margining</text>
+
+    <line x1="398" y1="96" x2="666" y2="96" stroke="#E2E8F0" stroke-width="1"/>
+
+    <!-- Accrual Card -->
+    <rect x="398" y="112" width="268" height="96" rx="8" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1.2"/>
+    <text x="414" y="134" font-size="11.5" font-weight="700" fill="#0F172A">Continuous Actual/360 Accrual</text>
+    <text x="414" y="153" font-size="11" fill="#475569">Interest accrues every second elapsed:</text>
+    <text x="414" y="173" font-size="10" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#0F766E">(principal × rateBps × Δt) / 360d</text>
+    <text x="414" y="191" font-size="10.5" fill="#64748B">Supports intraday &amp; overnight tenors</text>
+
+    <!-- Margin Call & Cure Card -->
+    <rect x="398" y="222" width="268" height="170" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1.2"/>
+    <text x="414" y="244" font-size="11.5" font-weight="700" fill="#0F172A">Mark-to-Market Margining</text>
+    <text x="414" y="263" font-size="11" fill="#475569">If price drop pushes collateral below</text>
+    <text x="414" y="279" font-size="11" fill="#475569">required maintenance threshold:</text>
+    <text x="414" y="301" font-size="10.2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#334155">• marginCall(repoId)</text>
+    <text x="426" y="317" font-size="10.5" fill="#64748B">Starts on-chain cureDeadline timer</text>
+    <text x="414" y="339" font-size="10.2" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" fill="#15803D">• topUpCollateral(repoId, amt)</text>
+    <text x="426" y="355" font-size="10.5" fill="#64748B">Borrower adds nhBOND → restores</text>
+    <text x="426" y="371" font-size="10.5" fill="#64748B">health &amp; returns status to Active</text>
+  </g>
+
+  <!-- Branching Arrows from Stage 2 to Stage 3A and Stage 3B -->
+  <path d="M 686 172 L 714 172 L 714 118 L 742 118" fill="none" stroke="#15803D" stroke-width="1.8" marker-end="url(#arrow-green)"/>
+  <path d="M 686 268 L 714 268 L 714 322 L 742 322" fill="none" stroke="#64748B" stroke-width="1.8" marker-end="url(#arrow-gray)"/>
+
+  <!-- STAGE 3A: Closing Leg — Happy Path -->
+  <g filter="url(#card-shadow)">
+    <rect x="748" y="28" width="324" height="180" rx="10" fill="#F0FDF4" stroke="#15803D" stroke-width="1.8"/>
+    <rect x="768" y="46" width="38" height="26" rx="6" fill="#DCFCE7" stroke="#86EFAC" stroke-width="1"/>
+    <text x="787" y="63" text-anchor="middle" font-size="12" font-weight="700" fill="#166534">3A</text>
+    <text x="816" y="57" font-size="9.5" font-weight="700" fill="#15803D" letter-spacing="0.06em">HAPPY PATH · CLOSING LEG</text>
+    <text x="816" y="73" font-size="13.5" font-weight="700" fill="#0F172A">Atomic Closing Leg (RvP)</text>
+
+    <line x1="768" y1="86" x2="1052" y2="86" stroke="#BBF7D0" stroke-width="1"/>
+
+    <text x="768" y="107" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="600" fill="#166534">Borrower calls settleRepo(repoId)</text>
+    <text x="768" y="129" font-size="11" fill="#1E293B">• Repays nhEUR (principal + interest)</text>
+    <text x="778" y="145" font-size="11" fill="#475569">directly from Borrower → Lender</text>
+    <text x="768" y="165" font-size="11" fill="#1E293B">• Releases 100% of locked nhBOND back</text>
+    <text x="778" y="181" font-size="11" fill="#475569">to Borrower atomically · emits RepoSettled</text>
+  </g>
+
+  <!-- STAGE 3B: Default Close-Out Netting -->
+  <g filter="url(#card-shadow)">
+    <rect x="748" y="232" width="324" height="180" rx="10" fill="#F8FAFC" stroke="#94A3B8" stroke-width="1.8"/>
+    <rect x="768" y="250" width="38" height="26" rx="6" fill="#E2E8F0" stroke="#CBD5E1" stroke-width="1"/>
+    <text x="787" y="267" text-anchor="middle" font-size="12" font-weight="700" fill="#334155">3B</text>
+    <text x="816" y="261" font-size="9.5" font-weight="700" fill="#64748B" letter-spacing="0.06em">DEFAULT · MISSED MATURITY / CURE</text>
+    <text x="816" y="277" font-size="13.5" font-weight="700" fill="#0F172A">GMRA Close-Out Netting</text>
+
+    <line x1="768" y1="290" x2="1052" y2="290" stroke="#E2E8F0" stroke-width="1"/>
+
+    <text x="768" y="311" font-size="11" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="600" fill="#334155">Lender calls claimDefault(repoId)</text>
+    <text x="768" y="333" font-size="11" fill="#1E293B">• Sizes debt owed at live oracle price</text>
+    <text x="768" y="353" font-size="11" fill="#1E293B">• Seizes nhBOND equal to exact debt</text>
+    <text x="778" y="369" font-size="11" fill="#475569">owed and transfers to Lender</text>
+    <text x="768" y="389" font-size="11" fill="#166534">• Returns any surplus nhBOND to Borrower</text>
+  </g>
+</svg>

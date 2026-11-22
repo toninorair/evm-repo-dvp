@@ -47,6 +47,7 @@ export type Registration = {
   bond: boolean
   cash: boolean
   block: bigint
+  txHash?: Hash
 }
 
 export type Snapshot = {

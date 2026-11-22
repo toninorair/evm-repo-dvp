@@ -32,7 +32,7 @@ export function TopUp({ repo }: { repo: Repo }) {
           <span className="fw-500" style={{ fontSize: 15 }}>
             Post more nhBOND to escrow
           </span>
-          <span className="small muted">topUpCollateral({String(repo.id)}, amount)</span>
+          <span className="small muted">Top Up Collateral</span>
         </div>
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-end' }}>
           <div className="field" style={{ flex: '1 1 240px' }}>

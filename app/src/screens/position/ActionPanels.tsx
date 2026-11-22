@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Check, Gauge, Tween, TxLink, party } from '../../components/ui'
+import { AddressLink, Check, Gauge, Tween, TxLink } from '../../components/ui'
 import { backend } from '../../lib/backend'
 import { amount, bps, dateTime, duration, eur, price, time } from '../../lib/format'
 import { RepoStatus, closeOut, defaultReason, margin, openingCollateral, repurchasePrice, same, type Repo } from '../../lib/repo'
@@ -33,8 +33,8 @@ export function AcceptPanel({ repo }: { repo: Repo }) {
   ]
   const tradeChecks = [
     { label: 'Before the deadline', ok: !expired, fail: 'Expired', detail: dateTime(repo.order.acceptDeadline) },
-    { label: 'Oracle has a NAV', ok: !snapshot!.oracle.invalid, fail: 'No NAV' },
-    { label: 'Collateral within cap', ok: nav > 0n ? required <= repo.order.maxCollateralAmount : undefined, fail: 'Above cap', detail: `${amount(required, 2)} of ${amount(repo.order.maxCollateralAmount, 2)}` },
+    { label: 'Acceptable nhBOND NAV oracle value', ok: !snapshot!.oracle.invalid, fail: 'No NAV' },
+    { label: 'Max collateral cap', ok: nav > 0n ? required <= repo.order.maxCollateralAmount : undefined, fail: 'Above cap', detail: `${amount(required, 4)} required / ${amount(repo.order.maxCollateralAmount, 4)} max` },
     { label: 'Borrower identity verified', ok: cp?.verified, fail: 'Not verified' },
     { label: 'Borrower free nhBOND balance', ok: cp ? cp.bondBalance >= required : undefined, fail: 'Insufficient' },
     { label: 'Borrower nhBOND approval', ok: cp ? cp.bondAllowance >= required : undefined, fail: 'Too low' },
@@ -69,7 +69,7 @@ export function AcceptPanel({ repo }: { repo: Repo }) {
             Cancel proposal
           </button>
           <span className="small muted">
-            Only {party(repo.order.lender)} can accept. They accept it from the Lender tab: {`${window.location.origin}${window.location.pathname}#/lender/repo/${repo.id}`}
+            Only <AddressLink address={repo.order.lender} /> can accept. They accept it from the Lender tab: {`${window.location.origin}${window.location.pathname}#/lender/repo/${repo.id}`}
           </span>
         </>
       )}
@@ -119,7 +119,7 @@ export function MarginPanel({ repo }: { repo: Repo }) {
           <button type="button" className="btn block" disabled={busy || (!!account && !canCall)} onClick={() => (account ? run('Margin call', (st) => backend.marginCall(repo, st)) : connect())}>
             {m.healthy ? 'Margin call · not due' : 'Issue margin call'}
           </button>
-          <span className="small muted">marginCall() is permissionless. It starts a {duration(repo.order.curePeriodSeconds)} cure window.</span>
+          <span className="small muted">Margin calls are permissionless and start a {duration(repo.order.curePeriodSeconds)} cure window.</span>
         </>
       )}
     </div>

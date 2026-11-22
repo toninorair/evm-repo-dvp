@@ -45,7 +45,7 @@ describe('format helpers', () => {
   })
 
   it('formats tenors, durations, and relative ages', () => {
-    assert.equal(tenor(86_400), 'O/N')
+    assert.equal(tenor(86_400), '1d')
     assert.equal(tenor(7 * 86_400), '7d')
     assert.equal(tenor(3_600 * 6), '6h')
     assert.equal(tenor(600), '10m')

@@ -57,15 +57,6 @@ export function Overview() {
               <a className="btn primary" href="#/borrower">
                 Launch Demo App →
               </a>
-              <a className="btn" href="#/lender">
-                Lender Desk
-              </a>
-              <a className="btn" href="#/market">
-                Market NAV
-              </a>
-              <a className="btn" href="#/identity">
-                Identity Registry
-              </a>
             </div>
           </div>
         </article>
@@ -85,11 +76,11 @@ export function Overview() {
               Open discussion pushing on institutional trade-offs, insolvency &amp; FCD/SFD enforceability, smart-contract security invariants, changing requirements on the spot, and how Ethereum Institutional would scope and lead the Phase 1 pilot.
             </p>
             <div className="timeline-actions">
-              <a className="btn" href="./presentation.html#6">
-                Contract Architecture
+              <a className="btn primary" href="./presentation.html#6">
+                Contract Architecture →
               </a>
-              <a className="btn" href="./presentation.html#7">
-                Repo Flows
+              <a className="btn primary" href="./presentation.html#7">
+                Repo Flows →
               </a>
             </div>
           </div>

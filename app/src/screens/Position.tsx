@@ -1,4 +1,4 @@
-import { Empty, Pill, party } from '../components/ui'
+import { AddressLink, Empty, Pill } from '../components/ui'
 import { bps, duration, eur, formatRepoId, tenor, time } from '../lib/format'
 import { RepoStatus, isOpen, margin, same } from '../lib/repo'
 import { useLedger, useNow } from '../lib/store'
@@ -65,7 +65,8 @@ export function Position({ id }: { id: bigint }) {
             <Pill status={s}>{expired ? 'Expired' : undefined}</Pill>
           </div>
           <p className="muted lead">
-            {party(repo.order.borrower, account)} {isBorrower ? 'borrow' : 'borrows'} {eur(repo.order.borrowAmount)} from {party(repo.order.lender, account)} against nhBOND · {tenor(repo.order.termSeconds)} at {bps(repo.order.repoRateBps)} · {role}
+            <AddressLink address={repo.order.borrower} me={account} /> {isBorrower ? 'borrow' : 'borrows'} {eur(repo.order.borrowAmount)} from{' '}
+            <AddressLink address={repo.order.lender} me={account} /> against nhBOND · {tenor(repo.order.termSeconds)} at {bps(repo.order.repoRateBps)} · {role}
           </p>
         </div>
         {s === RepoStatus.MarginCalled && (

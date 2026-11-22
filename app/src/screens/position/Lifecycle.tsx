@@ -18,7 +18,7 @@ export function Lifecycle({ repo, now }: { repo: Repo; now: number }) {
     {
       n: '01',
       t: 'Proposed',
-      d: s === RepoStatus.Proposed ? `Accept by ${dateTime(repo.order.acceptDeadline)}` : 'proposeRepo()',
+      d: s === RepoStatus.Proposed ? `Accept by ${dateTime(repo.order.acceptDeadline)}` : 'Proposal submitted',
       cls: s === RepoStatus.Proposed ? (now > repo.order.acceptDeadline ? 'now bad' : 'now') : 'done',
     },
     {

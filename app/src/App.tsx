@@ -1,16 +1,15 @@
 import { BrandLink, Footer, Header, NetworkBadge, Toast } from './components/ui'
 import { LedgerProvider, parseRoute, useRoute } from './lib/store'
 import { Book } from './screens/Book'
-import { Desk, Market } from './screens/Desk'
-import { Identity } from './screens/Identity'
+import { Desk } from './screens/Desk'
+import { Operator } from './screens/Operator'
 import { Overview } from './screens/Overview'
 import { Position } from './screens/Position'
 import { Propose } from './screens/Propose'
 
 function Screen({ route }: { route: string }) {
   const { tab, page } = parseRoute(route)
-  if (tab === 'market') return <Market />
-  if (tab === 'identity') return <Identity />
+  if (tab === 'operator') return <Operator />
   const repo = page.match(/^\/repo\/(\d+)/)
   if (repo) return <Position key={repo[1]} id={BigInt(repo[1])} />
   if (tab === 'borrower' && page.startsWith('/propose')) return <Propose />
@@ -24,13 +23,13 @@ function OpenerHeader() {
       <div className="wrap site-header-bar opener">
         <BrandLink />
         <div className="header-actions">
-          <NetworkBadge />
           <a href="./presentation.html" className="btn sm">
             Presentation
           </a>
           <a href="#/borrower" className="btn primary sm">
             Demo App →
           </a>
+          <NetworkBadge />
         </div>
       </div>
     </header>

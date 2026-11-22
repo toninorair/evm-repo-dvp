@@ -12,11 +12,12 @@ export function party(a: Address, me?: Address) {
   return same(a, me) ? 'You' : shortAddr(a)
 }
 
-export function AddressLink({ address, me }: { address: Address; me?: Address }) {
-  if (!explorer) return <span title={address}>{party(address, me)}</span>
+export function AddressLink({ address, me, full = false }: { address: Address; me?: Address; full?: boolean }) {
+  const text = full ? (address === ZERO ? '—' : address) : party(address, me)
+  if (!explorer || address === ZERO) return <span title={address}>{text}</span>
   return (
     <a href={`${explorer}/address/${address}`} target="_blank" rel="noreferrer" title={address} onClick={(e) => e.stopPropagation()}>
-      {party(address, me)}
+      {text}
     </a>
   )
 }
@@ -34,8 +35,7 @@ export function TxLink({ hash, children }: { hash?: Hash; children?: ReactNode }
 export const tabLabel: Record<Tab, string> = {
   borrower: 'Borrower',
   lender: 'Lender',
-  market: 'Market',
-  identity: 'Identity',
+  operator: 'Operator',
 }
 
 /** Pages inside each counterparty tab. */
@@ -49,8 +49,7 @@ const pages: Record<Tab, { page: string; label: string }[]> = {
     { page: '/', label: 'Positions' },
     { page: '/wallet', label: 'Wallet' },
   ],
-  market: [],
-  identity: [],
+  operator: [],
 }
 
 export function BrandLink({ title }: { title?: string }) {
@@ -64,10 +63,11 @@ export function BrandLink({ title }: { title?: string }) {
 }
 
 export function NetworkBadge({ wrongNetwork = false }: { wrongNetwork?: boolean }) {
+  const label = networkName === 'Sepolia' ? 'Ethereum Sepolia' : networkName
   return (
     <span className={`badge-pill${wrongNetwork ? ' bad' : ''}`}>
       {!wrongNetwork && <span className="pulse-dot" aria-hidden="true" />}
-      {wrongNetwork ? 'Wrong network' : networkName}
+      {wrongNetwork ? 'Wrong network' : label}
     </span>
   )
 }
@@ -76,8 +76,7 @@ export function Header({ route }: { route: string }) {
   const { tab, href, roles, account, wrongNetwork, checks, connect, disconnect } = useLedger()
   const { page } = parseRoute(route)
   const current = page.startsWith('/repo') ? '/' : page
-  const isOperatorTab = tab === 'market' || tab === 'identity'
-  const roleName = isOperatorTab ? 'Operator' : tabLabel[tab]
+  const roleName = tabLabel[tab]
 
   return (
     <header className="site-header">
@@ -87,13 +86,19 @@ export function Header({ route }: { route: string }) {
           <a href="#/" className="badge-pill ink">
             ← Session Plan
           </a>
-          <NetworkBadge wrongNetwork={wrongNetwork} />
           {account ? (
             <span className="wallet-pill">
               <span>
-                {roleName} · {shortAddr(account)}
+                {roleName} ·{' '}
+                {explorer ? (
+                  <a href={`${explorer}/address/${account}`} target="_blank" rel="noreferrer" title={account} style={{ color: 'inherit' }}>
+                    {shortAddr(account)}
+                  </a>
+                ) : (
+                  shortAddr(account)
+                )}
               </span>
-              {checks && !checks.verified && <span className="wallet-pill-unverified">· not verified</span>}
+              {tab !== 'operator' && checks && !checks.verified && <span className="wallet-pill-unverified">· not verified</span>}
               <button
                 type="button"
                 onClick={disconnect}
@@ -108,6 +113,7 @@ export function Header({ route }: { route: string }) {
               Connect {roleName.toLowerCase()} wallet
             </button>
           )}
+          <NetworkBadge wrongNetwork={wrongNetwork} />
         </div>
       </div>
       <div className="wrap site-nav-bar">
@@ -118,7 +124,7 @@ export function Header({ route }: { route: string }) {
             return (
               <a key={t} role="tab" aria-selected={on} href={`#/${t}`} className="tab-link">
                 <span className="tab-link-title">{tabLabel[t]}</span>
-                <span className="small muted">{bound ? (t === 'identity' ? 'Shared operator' : shortAddr(bound)) : 'Not connected'}</span>
+                <span className="small muted">{bound ? shortAddr(bound) : 'Not connected'}</span>
               </a>
             )
           })}

@@ -1,12 +1,11 @@
-import { useState } from 'react'
 import { formatEther } from 'viem'
 import { AddressLink, Check, Empty } from '../components/ui'
-import { backend } from '../lib/backend'
-import { ago, amount, eur, formatRepoId, parseDecimal, price } from '../lib/format'
-import { RepoStatus, collateralValue, isOpen, margin, same, statusLabel } from '../lib/repo'
-import { useLedger, useNow } from '../lib/store'
+import { networkName } from '../lib/config'
+import { amount, eur } from '../lib/format'
+import { collateralValue, same } from '../lib/repo'
+import { useLedger } from '../lib/store'
 
-/** The current tab's wallet: identity, balances, approvals and readiness to trade. */
+/** The current tab's wallet: identity, balances, approvals and validations. */
 export function Desk() {
   const { snapshot, account, checks, connect, tab, href } = useLedger()
 
@@ -22,10 +21,8 @@ export function Desk() {
   if (!snapshot || !checks) return <Empty title="Reading your wallet…" />
 
   const mine = snapshot.repos.filter((r) => same(r.order.borrower, account) || same(r.order.lender, account))
-  const borrowing = mine.filter((r) => same(r.order.borrower, account) && isOpen(r.state.status))
-  const lending = mine.filter((r) => same(r.order.lender, account) && isOpen(r.state.status))
-  const pending = mine.filter((r) => same(r.order.borrower, account) && r.state.status === RepoStatus.Proposed)
   const free = checks.bondBalance - checks.bondFrozenTokens
+  const gasLabel = networkName === 'Sepolia' ? 'Sepolia ETH' : 'ETH'
 
   return (
     <div className="stack gap-10">
@@ -33,19 +30,20 @@ export function Desk() {
         <a href={href('/')} className="small muted back-link">
           ← Positions
         </a>
-        <h1>{tab === 'borrower' ? 'Borrower' : 'Lender'} wallet.</h1>
-        <p className="muted lead">
-          <AddressLink address={account} /> · {account}
+        <h1>{tab === 'borrower' ? 'Borrower' : 'Lender'} Wallet</h1>
+        <p className="muted lead" style={{ wordBreak: 'break-all' }}>
+          <AddressLink address={account} full />
         </p>
       </section>
 
       {!checks.verified && (
         <section className="reveal banner bad">
-          This wallet is not registered in the ERC-3643 identity registry, so RepoDvP and both tokens will reject it. Onboard it in the <a href={`#/identity?wallet=${account}`}>Identity</a> tab with the operator wallet.
+          This wallet is not registered in the ERC-3643 identity registry, so RepoDvP and both tokens will reject it. Onboard it in the{' '}
+          <a href={`#/operator?wallet=${account}`}>Operator</a> tab with the operator wallet.
         </section>
       )}
 
-      <section className="stats reveal d1">
+      <section className="stats three reveal d1">
         <div>
           <span className="small muted">nhBOND · collateral</span>
           <span className="figure fig-sm">{amount(checks.bondBalance, 2)}</span>
@@ -59,193 +57,35 @@ export function Desk() {
           <span className="small muted">Tokenised deposit</span>
         </div>
         <div>
-          <span className="small muted">Borrowing · lending</span>
-          <span className="figure fig-sm">
-            {borrowing.length} · {lending.length}
-          </span>
-          <span className="small muted">
-            {pending.length} proposal{pending.length === 1 ? '' : 's'} awaiting a lender
-          </span>
-        </div>
-        <div>
-          <span className="small muted">ETH</span>
+          <span className="small muted">{gasLabel}</span>
           <span className="figure fig-sm">{Number(formatEther(checks.gas)).toFixed(4)}</span>
           <span className="small muted">For gas</span>
         </div>
       </section>
 
-      <section className="split">
-        <div className="main reveal d2 stack gap-4">
-          <h2>Readiness</h2>
-          <div className="panel panel-pad stack gap-3" style={{ fontSize: 13 }}>
-            <Check label="Identity verified · ERC-3643 registry" ok={checks.verified} fail="Not verified" />
-            <Check label="nhBOND wallet not frozen" ok={!checks.bondFrozen} fail="Frozen" />
-            <Check label="nhEUR wallet not frozen" ok={!checks.cashFrozen} fail="Frozen" />
-            <Check label="nhBOND transfers live" ok={!checks.bondPaused} fail="Paused" />
-            <Check label="nhEUR transfers live" ok={!checks.cashPaused} fail="Paused" />
-            <Check label="Gas" ok={checks.gas > 0n} fail="No ETH" />
-            <div className="row row-divider">
-              <span className="muted">nhBOND approved to RepoDvP</span>
-              <span>{amount(checks.bondAllowance, 4)}</span>
-            </div>
-            <div className="row">
-              <span className="muted">nhEUR approved to RepoDvP</span>
-              <span>{eur(checks.cashAllowance)}</span>
-            </div>
-            <span className="small muted">
-              {tab === 'borrower' ? 'The borrower needs nhBOND, posted on acceptance, and nhEUR to repay principal and interest.' : 'The lender needs nhEUR to fund accepted repos.'} Approvals are requested automatically for the exact amount each action needs.
-            </span>
+      <section className="reveal d2 stack gap-4">
+        <h2>Validations</h2>
+        <div className="panel panel-pad stack gap-3" style={{ fontSize: 13 }}>
+          <Check label="Identity verified · ERC-3643 registry" ok={checks.verified} fail="Not verified" />
+          <Check label="nhBOND wallet not frozen" ok={!checks.bondFrozen} fail="Frozen" />
+          <Check label="nhEUR wallet not frozen" ok={!checks.cashFrozen} fail="Frozen" />
+          <Check label="nhBOND contract not paused" ok={!checks.bondPaused} fail="Paused" />
+          <Check label="nhEUR contract not paused" ok={!checks.cashPaused} fail="Paused" />
+          <div className="row row-divider">
+            <span className="muted">nhBOND approved to RepoDvP</span>
+            <span>{amount(checks.bondAllowance, 4)}</span>
           </div>
-          {mine.length > 0 && (
-            <p className="small muted" style={{ margin: 0 }}>
-              Your repos are listed under <a href={href('/')}>Positions</a>.
-            </p>
-          )}
+          <div className="row">
+            <span className="muted">nhEUR approved to RepoDvP</span>
+            <span>{eur(checks.cashAllowance)}</span>
+          </div>
         </div>
-        <aside className="side reveal d3">
-          <OracleInfo />
-        </aside>
+        {mine.length > 0 && (
+          <p className="small muted" style={{ margin: 0 }}>
+            Your repos are listed under <a href={href('/')}>Positions</a>.
+          </p>
+        )}
       </section>
-    </div>
-  )
-}
-
-function OracleInfo() {
-  const { snapshot } = useLedger()
-  const now = useNow()
-  const o = snapshot!.oracle
-  return (
-    <div className="panel panel-pad stack gap-3" style={{ fontSize: 13 }}>
-      <h3>Oracle</h3>
-      <div className="row">
-        <span className="muted">NAV</span>
-        <span>{price(o.price)}</span>
-      </div>
-      <div className="row">
-        <span className="muted">Updated</span>
-        <span>{o.updatedAt ? ago(now - o.updatedAt) : '—'}</span>
-      </div>
-      <span className="small muted">
-        Only the nhNAVOracle calculation agent can post a NAV. Use the <a href="#/market">Market</a> tab to move the price and test margin calls.
-      </span>
-    </div>
-  )
-}
-
-/** The calculation agent's tab: posts NAVs to move the market and shows what each open repo needs. */
-export function Market() {
-  const { snapshot, account, checks, connect } = useLedger()
-  const now = useNow()
-  if (!account) {
-    return (
-      <Empty title="Connect the NAV calculation agent">
-        <span className="small muted" style={{ display: 'block' }}>
-          Only the wallet holding CALCULATION_AGENT_ROLE on nhNAVOracle can post a NAV. Locally that is anvil account #0, the deployer.
-        </span>
-        <button type="button" className="btn primary" onClick={connect} style={{ marginTop: 12 }}>
-          Connect NAV agent wallet
-        </button>
-      </Empty>
-    )
-  }
-  if (!snapshot || !checks) return <Empty title="Reading the oracle…" />
-  const open = snapshot.repos.filter((r) => isOpen(r.state.status))
-
-  return (
-    <div className="stack gap-10">
-      <section className="reveal page-intro">
-        <h1>Market.</h1>
-        <p className="muted lead">
-          Move the nhBOND NAV to put repos under margin pressure. RepoDvP reads this price on accept, margin call, top-up and default.
-        </p>
-      </section>
-      <section className="split">
-        <div className="main reveal d1 stack gap-4">
-          <h2>Call Prices</h2>
-          {open.length === 0 ? (
-            <p className="small muted" style={{ margin: 0 }}>
-              No active repos yet. Once a lender accepts, each repo’s margin-call price shows here.
-            </p>
-          ) : (
-            <div className="panel panel-pad stack gap-3" style={{ fontSize: 13 }}>
-              {open.map((r) => {
-                const m = margin(r, snapshot.oracle.price, now)
-                return (
-                  <div key={String(r.id)} className="row">
-                    <a href={`#/lender/repo/${r.id}`}>{formatRepoId(r.id)}</a>
-                    <span className="muted">{statusLabel[r.state.status]}</span>
-                    <span>
-                      call below {price(m.callPrice)} · {m.healthy ? 'healthy' : 'under-collateralised'}
-                    </span>
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-        <aside className="side reveal d2">
-          {checks.isNavAgent ? (
-            <NavControl />
-          ) : (
-            <div className="stack gap-3">
-              <div className="banner bad small">
-                This wallet does not hold CALCULATION_AGENT_ROLE, so it cannot post a NAV. Disconnect and connect the deployer wallet.
-              </div>
-              <OracleInfo />
-            </div>
-          )}
-        </aside>
-      </section>
-    </div>
-  )
-}
-
-function NavControl() {
-  const { snapshot, busy, run, account } = useLedger()
-  const now = useNow()
-  const o = snapshot!.oracle
-  const current = Number(o.price) / 1e8
-  const [input, setInput] = useState(current ? current.toFixed(2) : '100.00')
-  const next = parseDecimal(input, 8)
-  const move = o.price > 0n && next > 0n ? Number(((next - o.price) * 10_000n) / o.price) : 0
-  const nudge = (bpsMove: number) => setInput(((current * (10_000 + bpsMove)) / 10_000).toFixed(2))
-
-  return (
-    <div className="panel panel-pad stack gap-4">
-      <div className="row row-baseline">
-        <h3>Oracle · Calculation Agent</h3>
-        <span className={`small ${o.invalid ? 'text-bad' : 'text-ok'}`}>{o.invalid ? 'No NAV' : 'Live'}</span>
-      </div>
-      <div className="stack gap-1" style={{ paddingBottom: 14, borderBottom: '1px solid var(--line)' }}>
-        <span className="small muted">Current NAV</span>
-        <span className="cluster-sm" style={{ alignItems: 'baseline' }}>
-          <span className="figure fig-lg">{price(o.price)}</span>
-          <span className="muted">per nhBOND</span>
-        </span>
-        <span className={`small ${o.invalid ? 'text-bad' : 'muted'}`}>Updated {o.updatedAt ? ago(now - o.updatedAt) : 'never'}</span>
-      </div>
-      <div className="stack gap-1">
-        <span className="small muted">Calculation agent</span>
-        <span className="small" style={{ wordBreak: 'break-all' }}>
-          {account}
-        </span>
-      </div>
-      <div className="field">
-        <label htmlFor="nav">New NAV · EUR per nhBOND</label>
-        <input id="nav" inputMode="decimal" value={input} onChange={(e) => setInput(e.target.value)} />
-        <span className="hint">{move === 0 ? 'Same as the current NAV.' : `${move > 0 ? '+' : '−'}${Math.abs(move)} bps vs current`}</span>
-      </div>
-      <div className="cluster-sm">
-        {[-500, -200, -100, 100, 200, 500].map((b) => (
-          <button key={b} type="button" className="chip" onClick={() => nudge(b)}>
-            {b > 0 ? '+' : '−'}
-            {Math.abs(b) / 100}%
-          </button>
-        ))}
-      </div>
-      <button type="button" className="btn primary block" disabled={busy || next <= 0n} onClick={() => run('NAV update', (st) => backend.updateNav(next, st))}>
-        Post NAV {price(next)}
-      </button>
     </div>
   )
 }

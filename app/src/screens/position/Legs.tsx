@@ -1,9 +1,10 @@
-import { TxLink, party } from '../../components/ui'
+import type { ReactNode } from 'react'
+import { AddressLink, TxLink } from '../../components/ui'
 import { amount, dateTime } from '../../lib/format'
 import { RepoStatus, isOpen, repurchasePrice, type Repo } from '../../lib/repo'
 import { useLedger } from '../../lib/store'
 
-function LegFlow({ from, to, value, last = false }: { from: string; to: string; value: string; last?: boolean }) {
+function LegFlow({ from, to, value, last = false }: { from: ReactNode; to: ReactNode; value: string; last?: boolean }) {
   return (
     <>
       <div className="leg-flow">
@@ -24,8 +25,8 @@ export function Legs({ repo, now }: { repo: Repo; now: number }) {
   const started = repo.state.startTime > 0
   const settled = repo.history.settled
   const defaulted = repo.history.defaulted
-  const borrower = party(repo.order.borrower, account)
-  const lender = party(repo.order.lender, account)
+  const borrower = <AddressLink address={repo.order.borrower} me={account} />
+  const lender = <AddressLink address={repo.order.lender} me={account} />
   const opened = repo.history.openedCollateral
   const closed = !!(settled || defaulted)
 
@@ -48,7 +49,7 @@ export function Legs({ repo, now }: { repo: Repo; now: number }) {
                 One transaction · {dateTime(repo.state.startTime)} <TxLink hash={repo.history.txs.opened} />
               </>
             ) : (
-              'Both legs settle in acceptRepo() or the call reverts.'
+              'Both legs settle atomically on acceptance, or the transaction reverts.'
             )}
           </div>
         </div>

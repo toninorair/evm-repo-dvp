@@ -1,4 +1,4 @@
-import type { Address, PublicClient } from 'viem'
+import type { Address, Hash, PublicClient } from 'viem'
 import { identityRegistryAbi, oracleAbi, repoDvpAbi } from './abi'
 import { deployBlock } from './config'
 import type { RepoHistory } from './repo'
@@ -26,7 +26,7 @@ export class LogIndexer {
   private blockTimes = new Map<bigint, number>()
   private navHistory: bigint[] = []
   /** registry address → wallet → registration, rebuilt from events. */
-  private registry = new Map<string, Map<string, { wallet: Address; identity: Address; block: bigint }>>()
+  private registry = new Map<string, Map<string, { wallet: Address; identity: Address; block: bigint; txHash?: Hash }>>()
 
   constructor(client: PublicClient) {
     this.client = client
@@ -58,7 +58,12 @@ export class LogIndexer {
           const a = l.args as { investorAddress?: Address; identity?: Address }
           if (!a.investorAddress) continue
           if (l.eventName === 'IdentityRegistered') {
-            map.set(a.investorAddress.toLowerCase(), { wallet: a.investorAddress, identity: a.identity!, block: l.blockNumber })
+            map.set(a.investorAddress.toLowerCase(), {
+              wallet: a.investorAddress,
+              identity: a.identity!,
+              block: l.blockNumber,
+              txHash: l.transactionHash ?? undefined,
+            })
           } else if (l.eventName === 'IdentityRemoved') {
             map.delete(a.investorAddress.toLowerCase())
           }

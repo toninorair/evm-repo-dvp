@@ -54,9 +54,8 @@ export function parseDecimal(input: string, decimals = 18, fallback = 0n): bigin
   }
 }
 
-/** Term label: "O/N", "7d", "6h", "15m". */
+/** Term label: "1d", "7d", "6h", "15m". */
 export function tenor(seconds: number) {
-  if (seconds === 86_400) return 'O/N'
   if (seconds % 86_400 === 0) return `${seconds / 86_400}d`
   if (seconds % 3600 === 0) return `${seconds / 3600}h`
   if (seconds % 60 === 0) return `${seconds / 60}m`
@@ -64,7 +63,7 @@ export function tenor(seconds: number) {
 }
 
 const dateFmt = new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' })
-const timeFmt = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit' })
+const timeFmt = new Intl.DateTimeFormat('en-US', { hour: '2-digit', minute: '2-digit', hour12: false, timeZoneName: 'short' })
 
 export function date(ts: number) {
   return ts ? dateFmt.format(new Date(ts * 1000)) : '—'

@@ -3,7 +3,7 @@ export function Overview() {
     <div className="rise" style={{ maxWidth: 960 }}>
       <div style={{ paddingBottom: 32, borderBottom: '1px solid var(--line)' }}>
         <div className="eyebrow" style={{ marginBottom: 12 }}>
-          Nordhaven Bank · Project Titan · 60-Minute Panel Session
+          Nordhaven Bank · Case Study · 60-Minute Panel Session
         </div>
         <h1>Tokenised Repo on Ethereum</h1>
         <p className="muted" style={{ marginTop: 14, fontSize: 15, maxWidth: 680 }}>
@@ -25,14 +25,14 @@ export function Overview() {
             </div>
             <h2>Deliverables 1 &amp; 2 — Concept Explainer &amp; Steering Memo</h2>
             <p className="muted timeline-desc">
-              Executive walkthrough for Nordhaven’s Head of Repo Trading and Steering Committee: market structure &amp; atomic DvP lifecycle, proven vs. aspirational use cases, public Ethereum thesis, and our <strong>Go with Conditions</strong> recommendation across legal finality, tokenised deposit cash leg (<code>nhEUR</code>), privacy/SCO60, and four launch gates.
+              Executive walkthrough for Nordhaven’s Head of Repo Trading and Steering Committee: market structure &amp; atomic DvP lifecycle, proven vs. aspirational use cases, and the public Ethereum thesis.
             </p>
             <div className="timeline-actions">
               <a className="btn primary" href="./presentation.html">
                 Open Presentation →
               </a>
-              <a className="btn" href="./presentation.html#5">
-                Jump to Steering Memo
+              <a className="btn primary" href="./presentation.html#5">
+                Steering Memo →
               </a>
             </div>
           </div>
@@ -49,9 +49,9 @@ export function Overview() {
               <span className="eyebrow">02 · Live Demo · 10 Min</span>
               <span className="timeline-time">20:00 — 30:00</span>
             </div>
-            <h2>Deliverable 3 — Sepolia Settlement Console</h2>
+            <h2>Deliverable 3 — Tokenised Repo Proof Of Concept</h2>
             <p className="muted timeline-desc">
-              Live execution against verified Sepolia contracts (<code>RepoDvP</code>, ERC-3643 <code>nhBOND</code>, deposit token <code>nhEUR</code>, Chainlink-interface <code>nhNAVOracle</code>): happy-path atomic opening DvP and closing RvP, followed by a bond NAV shock, <code>marginCall()</code>, and GMRA close-out netting.
+              Live execution against verified Sepolia contracts (<code>RepoDvP</code>, ERC-3643 <code>nhBOND</code>, deposit token <code>nhEUR</code>, and the Chainlink compatible oracle interface <code>nhNAVOracle</code>): programmable atomic opening DvP and closing RvP repo settlement, mark-to-market margin calls, and default close-out settlement.
             </p>
             <div className="timeline-actions">
               <a className="btn primary" href="#/borrower">
@@ -85,11 +85,11 @@ export function Overview() {
               Open discussion pushing on institutional trade-offs, insolvency &amp; FCD/SFD enforceability, smart-contract security invariants, changing requirements on the spot, and how Ethereum Institutional would scope and lead the Phase 1 pilot.
             </p>
             <div className="timeline-actions">
-              <a className="btn" href="./presentation.html#7">
-                Appendix A1 · Contract Architecture
+              <a className="btn" href="./presentation.html#6">
+                Contract Architecture
               </a>
-              <a className="btn" href="./presentation.html#8">
-                Appendix A2 · Margin &amp; Netting Math
+              <a className="btn" href="./presentation.html#7">
+                Repo Flows
               </a>
             </div>
           </div>

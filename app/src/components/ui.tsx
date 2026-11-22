@@ -63,6 +63,20 @@ export function Header({ route }: { route: string }) {
           </span>
         </a>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, flexWrap: 'wrap' }}>
+          <a
+            href="#/"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '5px 10px',
+              border: '1px solid var(--line)',
+              borderRadius: 999,
+              color: 'var(--ink)',
+              textDecoration: 'none',
+            }}
+          >
+            ← Session Plan
+          </a>
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', border: '1px solid var(--line)', borderRadius: 999, color: wrongNetwork ? 'var(--bad)' : 'var(--muted)' }}>
             {!wrongNetwork && <span className="pulse-dot" aria-hidden="true" />}
             {wrongNetwork ? 'Wrong network' : networkName}

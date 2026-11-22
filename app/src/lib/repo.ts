@@ -8,15 +8,17 @@ export const MAX_INITIAL_MARGIN_BPS = 5_000
 export const MAX_TERM_SECONDS = 365 * 86_400
 export const WAD = 10n ** 18n
 
-export enum RepoStatus {
-  None,
-  Proposed,
-  Active,
-  MarginCalled,
-  Settled,
-  Defaulted,
-  Cancelled,
-}
+export const RepoStatus = {
+  None: 0,
+  Proposed: 1,
+  Active: 2,
+  MarginCalled: 3,
+  Settled: 4,
+  Defaulted: 5,
+  Cancelled: 6,
+} as const
+
+export type RepoStatus = (typeof RepoStatus)[keyof typeof RepoStatus]
 
 /** `orders(repoId)`: terms fixed at proposal. */
 export type RepoOrder = {

@@ -1,25 +1,13 @@
-import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Address } from 'viem'
 import { backend, explain, type Checks, type Progress, type Role, type Snapshot } from './backend'
 import { chain, isLocal, networkName } from './config'
 import { same } from './repo'
+import { parseRoute, tabs, useRoute, walletRole, type Tab } from './router'
+
+export { parseRoute, tabs, useRoute, walletRole, type Tab }
 
 type Toast = { id: number; tone: 'pending' | 'done' | 'error'; text: string }
-
-/**
- * A console tab. Borrower and lender each act through their own wallet. Market (NAV) and Identity (onboarding) share
- * the operator wallet: the deployer, which is the NAV calculation agent, registry agent, nhBOND agent and nhEUR treasury.
- */
-export type Tab = 'borrower' | 'lender' | 'market' | 'identity'
-export const tabs: Tab[] = ['borrower', 'lender', 'market', 'identity']
-export const walletRole: Record<Tab, Role> = { borrower: 'borrower', lender: 'lender', market: 'agent', identity: 'agent' }
-
-/** Splits `#/lender/repo/4` into its tab and the page inside it. Bare routes belong to the borrower tab. */
-export function parseRoute(route: string): { tab: Tab; page: string } {
-  const m = route.match(/^\/(borrower|lender|market|identity)([/?].*)?$/)
-  if (m) return { tab: m[1] as Tab, page: (m[2] ?? '').split('?')[0] || '/' }
-  return { tab: 'borrower', page: route }
-}
 
 type Ledger = {
   snapshot?: Snapshot
@@ -58,19 +46,33 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
   const [toast, setToast] = useState<Toast>()
   const toastId = useRef(0)
   const loading = useRef(false)
+  const mounted = useRef(true)
   const { tab } = parseRoute(useRoute())
   const role = walletRole[tab]
-  // Set during render, not in an effect, so a click on the newly rendered tab never signs as the previous one.
-  backend.setActing(role)
+
+  // Sync before paint/interaction so a click on a newly rendered tab never signs as the previous role, while keeping render pure.
+  useLayoutEffect(() => {
+    backend.setActing(role)
+  }, [role])
+
+  useEffect(() => {
+    mounted.current = true
+    return () => {
+      mounted.current = false
+    }
+  }, [])
 
   /** Polls skip while a load is running; explicit refreshes (after a transaction) always queue a fresh one. */
   const refresh = useCallback(async (poll = false) => {
     if (poll && loading.current) return
     loading.current = true
     try {
-      setSnapshot(await backend.load())
+      const next = await backend.load()
+      if (!mounted.current) return
+      setSnapshot(next)
       setError(undefined)
     } catch (e) {
+      if (!mounted.current) return
       setError(explain(e))
     } finally {
       loading.current = false
@@ -156,7 +158,7 @@ export function LedgerProvider({ children }: { children: ReactNode }) {
       run,
       dismiss: () => setToast(undefined),
     }),
-    [snapshot, error, tab, role, account, wallet,  checks, busy, toast, connect, refresh, run],
+    [snapshot, error, tab, role, account, wallet, checks, busy, toast, connect, refresh, run],
   )
   return <Ctx.Provider value={value}>{children}</Ctx.Provider>
 }
@@ -211,19 +213,4 @@ export function useTween(target: number, ms = 600) {
     }
   }, [target, ms])
   return value
-}
-
-/** Minimal hash router: #/borrower, #/borrower/propose, #/lender/repo/42, #/market, #/identity */
-export function useRoute() {
-  const read = () => window.location.hash.replace(/^#/, '') || '/'
-  const [route, setRoute] = useState(read)
-  useEffect(() => {
-    const on = () => {
-      setRoute(read())
-      window.scrollTo({ top: 0 })
-    }
-    window.addEventListener('hashchange', on)
-    return () => window.removeEventListener('hashchange', on)
-  }, [])
-  return route
 }

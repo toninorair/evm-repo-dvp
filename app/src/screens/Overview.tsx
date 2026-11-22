@@ -1,12 +1,12 @@
 export function Overview() {
   return (
-    <div className="rise" style={{ maxWidth: 960 }}>
+    <div className="reveal" style={{ maxWidth: 960 }}>
       <div style={{ paddingBottom: 32, borderBottom: '1px solid var(--line)' }}>
         <div className="eyebrow" style={{ marginBottom: 12 }}>
           Nordhaven Bank · Case Study · 60-Minute Panel Session
         </div>
         <h1>Tokenised Repo on Ethereum</h1>
-        <p className="muted" style={{ marginTop: 14, fontSize: 15, maxWidth: 680 }}>
+        <p className="muted lead" style={{ marginTop: 14, maxWidth: 680 }}>
           Session plan for the Lead FDE briefing: concept explainer for the trading desk, steering committee decision memo, live atomic DvP demonstration on Sepolia, and open Q&amp;A.
         </p>
       </div>

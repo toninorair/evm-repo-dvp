@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
-import { isAddress, parseUnits, type Address } from 'viem'
+import { isAddress, type Address } from 'viem'
 import { Check, Empty } from '../components/ui'
 import { backend } from '../lib/backend'
-import { amount, bps, duration, eur, price } from '../lib/format'
+import { amount, bps, duration, eur, parseDecimal, price } from '../lib/format'
 import {
   BPS,
   MAX_INITIAL_MARGIN_BPS,
@@ -28,22 +28,15 @@ const termPresets: [string, number, Unit][] = [
   ['1M', 30, 'd'],
 ]
 
-function toWad(v: string) {
-  try {
-    return v.trim() ? parseUnits(v.replace(/,/g, ''), 18) : 0n
-  } catch {
-    return 0n
-  }
-}
 const int = (v: string) => Math.max(0, Math.floor(Number(v) || 0))
 
 function Duration({ id, label, value, unit, onValue, onUnit, hint }: { id: string; label: string; value: string; unit: Unit; onValue(v: string): void; onUnit(u: Unit): void; hint?: string }) {
   return (
     <div className="field">
       <label htmlFor={id}>{label}</label>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <input id={id} inputMode="decimal" value={value} onChange={(e) => onValue(e.target.value)} style={{ flex: 1, minWidth: 0 }} />
-        <select aria-label={`${label} unit`} value={unit} onChange={(e) => onUnit(e.target.value as Unit)} style={{ height: 44, padding: '0 10px', border: '1px solid var(--line)', background: 'var(--surface)', font: 'inherit' }}>
+      <div className="duration-row">
+        <input id={id} inputMode="decimal" value={value} onChange={(e) => onValue(e.target.value)} />
+        <select aria-label={`${label} unit`} value={unit} onChange={(e) => onUnit(e.target.value as Unit)}>
           {(Object.keys(unitLabel) as Unit[]).map((u) => (
             <option key={u} value={u}>
               {unitLabel[u]}
@@ -92,7 +85,7 @@ export function Propose() {
   const nav = snapshot?.oracle.price ?? 0n
 
   const q = useMemo(() => {
-    const borrowAmount = toWad(cash)
+    const borrowAmount = parseDecimal(cash, 18)
     const repoRateBps = int(rate)
     const initialMarginBps = int(initial)
     const maintenanceMarginBps = int(maint)
@@ -161,32 +154,22 @@ export function Propose() {
     if (ok && id !== undefined) window.location.hash = href(`/repo/${id}`)
   }
 
-  const legend = (n: number, text: string) => (
-    <legend style={{ padding: '0 0 12px', width: '100%', borderBottom: '1px solid var(--ink)' }}>
-      <span style={{ fontFamily: 'var(--display)', fontSize: 22 }}>
-        {n} · {text}
-      </span>
-    </legend>
-  )
-  const fs = { margin: 0, padding: 0, border: 0, display: 'flex', flexDirection: 'column' as const, gap: 16 }
-  const grid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 20 }
-
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-      <section className="reveal" style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 760 }}>
-        <a href={href('/')} className="small muted" style={{ textDecoration: 'none' }}>
+    <div className="stack gap-10">
+      <section className="reveal page-intro">
+        <a href={href('/')} className="small muted back-link">
           ← Positions
         </a>
         <h1>Propose a repo.</h1>
-        <p className="muted" style={{ margin: 0, fontSize: 15 }}>
+        <p className="muted lead">
           You are the borrower: you post nhBOND and receive nhEUR. The lender you name accepts before the deadline, and both legs settle in that one transaction, or neither does.
         </p>
       </section>
 
       <section className="split">
-        <form className="main reveal d1" style={{ display: 'flex', flexDirection: 'column', gap: 32 }} onSubmit={(e) => (e.preventDefault(), submit())}>
-          <fieldset style={fs}>
-            {legend(1, 'Lender')}
+        <form className="main reveal d1 stack gap-8" onSubmit={(e) => (e.preventDefault(), submit())}>
+          <fieldset className="fieldset">
+            <legend className="form-legend">1 · Lender</legend>
             <div className="field">
               <label htmlFor="lender">Lender Wallet Address</label>
               <input id="lender" value={lender} onChange={(e) => setLender(e.target.value.trim())} placeholder="0x…" spellCheck={false} />
@@ -196,9 +179,9 @@ export function Propose() {
             </div>
           </fieldset>
 
-          <fieldset style={fs}>
-            {legend(2, 'Cash and rate')}
-            <div style={grid}>
+          <fieldset className="fieldset">
+            <legend className="form-legend">2 · Cash and rate</legend>
+            <div className="field-grid">
               <div className="field">
                 <label htmlFor="cash">Borrow · nhEUR</label>
                 <input id="cash" inputMode="decimal" value={cash} onChange={(e) => setCash(e.target.value)} />
@@ -211,9 +194,9 @@ export function Propose() {
             </div>
           </fieldset>
 
-          <fieldset style={fs}>
-            {legend(3, 'Margin')}
-            <div style={grid}>
+          <fieldset className="fieldset">
+            <legend className="form-legend">3 · Margin</legend>
+            <div className="field-grid">
               <div className="field">
                 <label htmlFor="im">Initial Margin · bps (max 5,000)</label>
                 <input id="im" inputMode="numeric" value={initial} onChange={(e) => setInitial(e.target.value)} />
@@ -227,20 +210,20 @@ export function Propose() {
             </div>
           </fieldset>
 
-          <fieldset style={fs}>
-            {legend(4, 'Timing')}
-            <div style={grid}>
+          <fieldset className="fieldset">
+            <legend className="form-legend">4 · Timing</legend>
+            <div className="field-grid">
               <Duration id="term" label="Term" value={term} unit={termUnit} onValue={setTerm} onUnit={setTermUnit} hint={q.termSeconds ? `Maturity ${duration(q.termSeconds)} after acceptance` : undefined} />
               <Duration id="cure" label="Cure period" value={cure} unit={cureUnit} onValue={setCure} onUnit={setCureUnit} hint="Time you get to top up after a margin call" />
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div className="cluster-sm">
               {termPresets.map(([label, v, u]) => (
                 <button key={label} type="button" className="chip" aria-pressed={Number(term) === v && termUnit === u} onClick={() => (setTerm(String(v)), setTermUnit(u))}>
                   {label}
                 </button>
               ))}
             </div>
-            <div style={grid}>
+            <div className="field-grid">
               <Duration id="window" label="Lender must accept within" value={window_} unit={windowUnit} onValue={setWindow} onUnit={setWindowUnit} />
               <div className="field">
                 <label htmlFor="tol">NAV Tolerance · bps</label>
@@ -251,12 +234,12 @@ export function Propose() {
           </fieldset>
         </form>
 
-        <aside className="side panel reveal d2" style={{ display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '24px 24px 20px', borderBottom: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 4 }}>
+        <aside className="side panel reveal d2 stack">
+          <div className="panel-section gap-1">
             <div className="eyebrow">Term sheet</div>
             <div style={{ fontFamily: 'var(--display)', fontSize: 26 }}>Repurchase agreement</div>
           </div>
-          <div style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
+          <div className="panel-section">
             <div className="row">
               <span className="muted">Purchase price</span>
               <span>{eur(q.borrowAmount)}</span>
@@ -265,13 +248,13 @@ export function Propose() {
               <span className="muted">Interest to maturity · Act/360</span>
               <span>{eur(q.atMaturity)}</span>
             </div>
-            <div className="row" style={{ paddingTop: 12, borderTop: '1px solid var(--line)', fontWeight: 500 }}>
+            <div className="row row-strong">
               <span>Repurchase price at maturity</span>
               <span>{eur(q.borrowAmount + q.atMaturity)}</span>
             </div>
             <span className="small muted">Interest keeps accruing after maturity until you settle.</span>
           </div>
-          <div style={{ padding: '20px 24px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 12, fontSize: 13 }}>
+          <div className="panel-section">
             <div className="row">
               <span className="muted">NAV · nhNAVOracle</span>
               <span>{price(nav)}</span>
@@ -284,14 +267,18 @@ export function Propose() {
               <span className="muted">Worth</span>
               <span>{eur(collateralValue(q.required, nav))}</span>
             </div>
-            <div className="row" style={{ paddingTop: 12, borderTop: '1px solid var(--line)', fontWeight: 500 }}>
+            <div className="row row-strong">
               <span>Collateral cap · approved</span>
               <span>{amount(q.maxCollateralAmount, 4)} nhBOND</span>
             </div>
-            <span className="small muted">acceptRepo() sizes collateral at the NAV when the lender accepts and reverts above this cap. Callable at a NAV below {price(q.callNav)}.</span>
+            <span className="small muted">
+              acceptRepo() sizes collateral at the NAV when the lender accepts and reverts above this cap. Callable at a NAV below {price(q.callNav)}.
+            </span>
           </div>
-          <div style={{ padding: '20px 24px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 8, fontSize: 12 }}>
-            <div style={{ fontWeight: 500, fontSize: 13 }}>Pre-trade checks</div>
+          <div className="panel-section gap-2 small">
+            <div className="fw-500" style={{ fontSize: 13 }}>
+              Pre-trade checks
+            </div>
             <Check label="Your identity · ERC-3643 registry" ok={checks?.verified} fail="Not verified" />
             <Check label="Lender identity" ok={isAddress(lender) ? lenderVerified : undefined} fail="Not verified" />
             <Check label="nhBOND available for the cap" ok={enoughBond} fail="Insufficient" detail={checks ? `${amount(checks.bondBalance - checks.bondFrozenTokens, 2)} free` : undefined} />
@@ -300,8 +287,8 @@ export function Propose() {
             <Check label="Oracle has a NAV · needed when the lender accepts" ok={!snapshot.oracle.invalid} fail="No NAV" />
             <Check label="ETH for gas" ok={checks ? checks.gas > 0n : undefined} fail="Empty" />
           </div>
-          <div style={{ padding: '20px 24px 24px', borderTop: '1px solid var(--line)', display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {q.errors[0] && account && <span className="small" style={{ color: 'var(--bad)' }}>{q.errors[0]}</span>}
+          <div className="panel-section gap-3">
+            {q.errors[0] && account && <span className="small text-bad">{q.errors[0]}</span>}
             <button type="button" className="btn primary block" disabled={busy || (!!account && (q.errors.length > 0 || blocked))} onClick={submit}>
               {!account ? 'Connect borrower wallet' : 'Approve nhBOND and propose'}
             </button>

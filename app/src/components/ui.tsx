@@ -3,8 +3,8 @@ import type { Address, Hash } from 'viem'
 import { explorer, networkName } from '../lib/config'
 import { shortAddr } from '../lib/format'
 import { RepoStatus, ZERO, same, statusLabel } from '../lib/repo'
-import { Mark } from './Mark'
 import { parseRoute, tabs, useLedger, useTween, walletRole, type Tab } from '../lib/store'
+import { Mark } from './Mark'
 
 /** "You" for the connected wallet, otherwise a short address. */
 export function party(a: Address, me?: Address) {
@@ -31,7 +31,12 @@ export function TxLink({ hash, children }: { hash?: Hash; children?: ReactNode }
   )
 }
 
-export const tabLabel: Record<Tab, string> = { borrower: 'Borrower', lender: 'Lender', market: 'Market', identity: 'Identity' }
+export const tabLabel: Record<Tab, string> = {
+  borrower: 'Borrower',
+  lender: 'Lender',
+  market: 'Market',
+  identity: 'Identity',
+}
 
 /** Pages inside each counterparty tab. */
 const pages: Record<Tab, { page: string; label: string }[]> = {
@@ -48,92 +53,81 @@ const pages: Record<Tab, { page: string; label: string }[]> = {
   identity: [],
 }
 
+export function BrandLink({ title }: { title?: string }) {
+  return (
+    <a href="#/" className="brand-link" title={title}>
+      <Mark size={44} />
+      <span className="brand-title">Ethereum Institutional</span>
+      <span className="brand-sub">Repo DvP · Nordhaven Bank</span>
+    </a>
+  )
+}
+
+export function NetworkBadge({ wrongNetwork = false }: { wrongNetwork?: boolean }) {
+  return (
+    <span className={`badge-pill${wrongNetwork ? ' bad' : ''}`}>
+      {!wrongNetwork && <span className="pulse-dot" aria-hidden="true" />}
+      {wrongNetwork ? 'Wrong network' : networkName}
+    </span>
+  )
+}
+
 export function Header({ route }: { route: string }) {
   const { tab, href, roles, account, wrongNetwork, checks, connect, disconnect } = useLedger()
   const { page } = parseRoute(route)
   const current = page.startsWith('/repo') ? '/' : page
+  const isOperatorTab = tab === 'market' || tab === 'identity'
+  const roleName = isOperatorTab ? 'Operator' : tabLabel[tab]
+
   return (
-    <header style={{ borderBottom: '1px solid var(--line)' }}>
-      <div className="wrap" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 16, paddingTop: 18, paddingBottom: 12 }}>
-        <a href="#/" style={{ display: 'flex', alignItems: 'center', gap: 14, color: 'var(--ink)', textDecoration: 'none' }} title="Back to Session Plan">
-          <Mark size={44} />
-          <span style={{ fontFamily: 'var(--display)', fontSize: 30 }}>Ethereum Institutional</span>
-          <span style={{ borderLeft: '1px solid var(--line)', paddingLeft: 16, fontSize: 18, color: 'var(--ok)' }}>
-            Repo DvP · Nordhaven Bank
-          </span>
-        </a>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 12, flexWrap: 'wrap' }}>
-          <a
-            href="#/"
-            style={{
-              display: 'inline-flex',
-              alignItems: 'center',
-              padding: '5px 10px',
-              border: '1px solid var(--line)',
-              borderRadius: 999,
-              color: 'var(--ink)',
-              textDecoration: 'none',
-            }}
-          >
+    <header className="site-header">
+      <div className="wrap site-header-bar">
+        <BrandLink title="Back to Session Plan" />
+        <div className="header-actions">
+          <a href="#/" className="badge-pill ink">
             ← Session Plan
           </a>
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', border: '1px solid var(--line)', borderRadius: 999, color: wrongNetwork ? 'var(--bad)' : 'var(--muted)' }}>
-            {!wrongNetwork && <span className="pulse-dot" aria-hidden="true" />}
-            {wrongNetwork ? 'Wrong network' : networkName}
-          </span>
+          <NetworkBadge wrongNetwork={wrongNetwork} />
           {account ? (
-            <span style={{ padding: '5px 6px 5px 12px', background: 'var(--ink)', color: 'var(--ground)', borderRadius: 999, display: 'inline-flex', alignItems: 'center', gap: 8 }}>
+            <span className="wallet-pill">
               <span>
-                {tab === 'market' || tab === 'identity' ? 'Operator' : tabLabel[tab]} · {shortAddr(account)}
+                {roleName} · {shortAddr(account)}
               </span>
-              {checks && !checks.verified && <span style={{ color: '#ff8a80' }}>· not verified</span>}
+              {checks && !checks.verified && <span className="wallet-pill-unverified">· not verified</span>}
               <button
                 type="button"
                 onClick={disconnect}
-                title={`Disconnect the ${tab === 'market' || tab === 'identity' ? 'operator' : tabLabel[tab].toLowerCase()} wallet`}
-                style={{ background: 'transparent', border: 0, color: 'inherit', cursor: 'pointer', opacity: 0.7, fontSize: 12, padding: '0 6px' }}
+                title={`Disconnect the ${roleName.toLowerCase()} wallet`}
+                className="wallet-pill-btn"
               >
                 Disconnect
               </button>
             </span>
           ) : (
-            <button type="button" className="btn primary" style={{ minHeight: 32, padding: '0 14px', fontSize: 12, borderRadius: 999 }} onClick={connect}>
-              Connect {tab === 'market' || tab === 'identity' ? 'operator' : tabLabel[tab].toLowerCase()} wallet
+            <button type="button" className="btn primary sm pill-btn" onClick={connect}>
+              Connect {roleName.toLowerCase()} wallet
             </button>
           )}
         </div>
       </div>
-      <div className="wrap" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 16 }}>
-        <nav aria-label="Counterparty" role="tablist" style={{ display: 'flex', gap: 4 }}>
+      <div className="wrap site-nav-bar">
+        <nav aria-label="Counterparty" role="tablist" className="tab-list">
           {tabs.map((t) => {
             const on = t === tab
             const bound = roles[walletRole[t]]
             return (
-              <a
-                key={t}
-                role="tab"
-                aria-selected={on}
-                href={`#/${t}`}
-                style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: '8px 16px 10px', textDecoration: 'none', color: on ? 'var(--ink)' : 'var(--muted)', borderBottom: `2px solid ${on ? 'var(--ink)' : 'transparent'}`, transition: 'color 160ms, border-color 160ms' }}
-              >
-                <span style={{ fontSize: 14, fontWeight: on ? 600 : 400 }}>{tabLabel[t]}</span>
-                <span className="small" style={{ color: 'var(--muted)', fontVariantNumeric: 'tabular-nums' }}>
-                  {bound ? (t === 'identity' ? 'Shared operator' : shortAddr(bound)) : 'Not connected'}
-                </span>
+              <a key={t} role="tab" aria-selected={on} href={`#/${t}`} className="tab-link">
+                <span className="tab-link-title">{tabLabel[t]}</span>
+                <span className="small muted">{bound ? (t === 'identity' ? 'Shared operator' : shortAddr(bound)) : 'Not connected'}</span>
               </a>
             )
           })}
         </nav>
-        <nav aria-label={`${tabLabel[tab]} pages`} style={{ display: 'flex', gap: 24, fontSize: 13, paddingBottom: 12 }}>
+        <nav aria-label={`${tabLabel[tab]} pages`} className="subnav">
           {pages[tab].map((p) => {
             const on = p.page === current
             return (
-              <a
-                key={p.page}
-                href={href(p.page)}
-                aria-current={on ? 'page' : undefined}
-                style={{ color: on ? 'var(--ink)' : 'var(--muted)', textDecoration: 'none', borderBottom: `1px solid ${on ? 'var(--ink)' : 'transparent'}`, paddingBottom: 2 }}
-              >
+              <a key={p.page} href={href(p.page)} aria-current={on ? 'page' : undefined} className="subnav-link">
                 {p.label}
               </a>
             )
@@ -146,8 +140,8 @@ export function Header({ route }: { route: string }) {
 
 export function Footer() {
   return (
-    <footer style={{ borderTop: '1px solid var(--line)' }}>
-      <div className="wrap small muted" style={{ paddingTop: 20, paddingBottom: 20, display: 'flex', justifyContent: 'flex-end' }}>
+    <footer className="site-footer">
+      <div className="wrap small muted site-footer-inner">
         <span>Proof of Concept · Testnet Only</span>
       </div>
     </footer>
@@ -171,14 +165,14 @@ export function Gauge({ ratioBps, thresholdBps, label }: { ratioBps: number; thr
   const pct = Math.max(0, Math.min(100, ((ratioBps - lo) / (hi - lo)) * 100))
   const healthy = ratioBps >= thresholdBps
   return (
-    <div role="img" aria-label={label} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+    <div role="img" aria-label={label} className="stack gap-1">
       <div className="gauge">
         <div className="fill" style={{ width: `${pct}%`, background: healthy ? 'var(--ok)' : 'var(--warn-strong)' }} />
         <div className="mark" style={{ left: '50%' }} />
       </div>
       <div className="row small muted" style={{ fontSize: 11 }}>
         <span>{(lo / 100).toFixed(0)}%</span>
-        <span style={{ color: 'var(--warn)' }}>{(thresholdBps / 100).toFixed(2)}% call</span>
+        <span className="text-warn">{(thresholdBps / 100).toFixed(2)}% call</span>
         <span>{(hi / 100).toFixed(0)}%</span>
       </div>
     </div>
@@ -203,7 +197,7 @@ export function Toast() {
 
 export function Empty({ title, children }: { title: string; children?: ReactNode }) {
   return (
-    <div className="reveal" style={{ padding: '48px 0', display: 'flex', flexDirection: 'column', gap: 8 }}>
+    <div className="reveal stack gap-2" style={{ padding: '48px 0' }}>
       <h2>{title}</h2>
       {children && <div className="muted">{children}</div>}
     </div>
@@ -213,12 +207,14 @@ export function Empty({ title, children }: { title: string; children?: ReactNode
 /** Pass / fail line used by the pre-trade checklists. */
 export function Check({ label, ok, fail = 'Fail', detail }: { label: string; ok?: boolean; fail?: string; detail?: ReactNode }) {
   return (
-    <div className="row" style={{ gap: 12 }}>
+    <div className="row">
       <span>
         {label}
         {detail && <span className="muted"> · {detail}</span>}
       </span>
-      <span style={{ color: ok === undefined ? 'var(--muted)' : ok ? 'var(--ok)' : 'var(--warn)', flexShrink: 0 }}>{ok === undefined ? '—' : ok ? 'Pass' : fail}</span>
+      <span className={ok === undefined ? 'muted' : ok ? 'text-ok' : 'text-warn'} style={{ flexShrink: 0 }}>
+        {ok === undefined ? '—' : ok ? 'Pass' : fail}
+      </span>
     </div>
   )
 }

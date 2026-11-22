@@ -3,7 +3,7 @@ import { formatUnits } from 'viem'
 import { Empty, Pill, Tween, party } from '../components/ui'
 import type { LedgerEvent } from '../lib/backend'
 import { networkName, repoDvP } from '../lib/config'
-import { amount, ago, bps, date, duration, eur, eurCompact, price, tenor, time } from '../lib/format'
+import { ago, amount, bps, date, duration, eur, eurCompact, formatRepoId, price, tenor, time } from '../lib/format'
 import { RepoStatus, collateralValue, defaultReason, isOpen, margin, same } from '../lib/repo'
 import { useLedger, useNow } from '../lib/store'
 
@@ -69,35 +69,37 @@ export function Book() {
     return { cash, units, weighted, calls, nextCure, rows, needsYou, oracle, events: snapshot.events, count: repos.length, mineCount: repos.filter(mine).length }
   }, [snapshot, filter, now, account])
 
-  if (!repoDvP)
+  if (!repoDvP) {
     return (
       <Empty title="Point the console at a deployment">
         Set <code>VITE_REPO_DVP</code> in <code>app/.env</code> to the RepoDvP address printed by <code>script/deploy/DeployAll.s.sol</code>, then restart <code>npm run dev</code>. The token, oracle and identity registry addresses are read from the contract.
       </Empty>
     )
+  }
   if (error && !snapshot) return <Empty title="Can't reach the settlement contract">{error}</Empty>
   if (!view) return <Empty title={`Loading the repo book from ${networkName}…`} />
 
   const { oracle } = view
   const move = oracle.previousPrice ? Number(((oracle.price - oracle.previousPrice) * 10_000n) / oracle.previousPrice) : undefined
   const age = now - oracle.updatedAt
+  const visibleEvents = view.events.slice(0, 8)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 48 }}>
-      <section className="reveal" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', justifyContent: 'space-between', gap: 24 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 720 }}>
+    <div className="stack gap-12">
+      <section className="reveal page-hero">
+        <div className="page-intro" style={{ maxWidth: 720 }}>
           <div className="eyebrow">
             {tab === 'borrower' ? 'Borrower' : 'Lender'} · {date(now)}, {time(now)}
           </div>
           <h1>{tab === 'borrower' ? 'Borrow cash against nhBOND.' : 'Lend cash, secured by nhBOND.'}</h1>
-          <p className="muted" style={{ margin: 0, fontSize: 15, maxWidth: 600 }}>
+          <p className="muted lead" style={{ maxWidth: 600 }}>
             {tab === 'borrower'
               ? 'Propose a repo to a named lender, cure margin calls with extra collateral and settle to get your bonds back. Interest accrues Actual/360 per second.'
               : 'Accept proposals addressed to you; both legs settle in one transaction. Call margin when coverage drops below the threshold, and claim the collateral if the borrower defaults.'}
           </p>
         </div>
         {tab === 'borrower' && (
-          <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <div className="cluster">
             <a className="btn primary" href={href('/propose')}>
               Propose repo
             </a>
@@ -106,11 +108,16 @@ export function Book() {
       </section>
 
       {view.needsYou.length > 0 && (
-        <section className="reveal" style={{ background: 'var(--warn-bg)', border: '1px solid var(--warn-line)', padding: '14px 20px', display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'center', fontSize: 13 }}>
+        <section className="reveal banner warn">
           <strong style={{ fontWeight: 600 }}>Waiting on you:</strong>
           {view.needsYou.map((r) => (
             <a key={String(r.id)} href={href(`/repo/${r.id}`)}>
-              #{String(r.id).padStart(4, '0')} · {r.state.status === RepoStatus.Proposed ? 'accept or let lapse' : r.state.status === RepoStatus.MarginCalled && same(r.order.borrower, account) ? 'cure the margin call' : 'default claimable'}
+              {formatRepoId(r.id)} ·{' '}
+              {r.state.status === RepoStatus.Proposed
+                ? 'accept or let lapse'
+                : r.state.status === RepoStatus.MarginCalled && same(r.order.borrower, account)
+                  ? 'cure the margin call'
+                  : 'default claimable'}
             </a>
           ))}
         </section>
@@ -119,37 +126,39 @@ export function Book() {
       <section aria-label="Book summary" className="stats reveal d1">
         <div>
           <span className="small muted">Cash outstanding</span>
-          <span className="figure" style={{ fontSize: 36 }}>
+          <span className="figure fig-md">
             <Tween value={Number(formatUnits(view.cash, 18))} format={(n) => eurCompact(BigInt(Math.round(n)) * 10n ** 18n)} />
           </span>
           <span className="small muted">{view.rows.filter((r) => r.m).length || 'No'} open trades shown · nhEUR</span>
         </div>
         <div>
           <span className="small muted">Collateral in escrow (MTM)</span>
-          <span className="figure" style={{ fontSize: 36 }}>
+          <span className="figure fig-md">
             <Tween value={Number(formatUnits(collateralValue(view.units, oracle.price), 18))} format={(n) => eurCompact(BigInt(Math.round(n)) * 10n ** 18n)} />
           </span>
           <span className="small muted">{amount(view.units, 2)} nhBOND at NAV</span>
         </div>
         <div>
           <span className="small muted">Weighted repo rate</span>
-          <span className="figure" style={{ fontSize: 36 }}>
+          <span className="figure fig-md">
             <Tween value={view.weighted} format={(n) => bps(n)} />
           </span>
           <span className="small muted">Actual/360 · per-second accrual</span>
         </div>
         <div>
           <span className="small muted">Open margin calls</span>
-          <span className="figure" style={{ fontSize: 36, color: view.calls.length ? 'var(--warn-strong)' : undefined }}>{view.calls.length}</span>
-          <span className="small" style={{ color: view.calls.length ? 'var(--warn)' : 'var(--muted)' }}>
+          <span className="figure fig-md" style={{ color: view.calls.length ? 'var(--warn-strong)' : undefined }}>
+            {view.calls.length}
+          </span>
+          <span className={`small ${view.calls.length ? 'text-warn' : 'muted'}`}>
             {view.nextCure ? (view.nextCure > now ? `Next cure deadline in ${duration(view.nextCure - now)}` : 'A cure window has expired') : 'No outstanding calls'}
           </span>
         </div>
       </section>
 
       <section className="split">
-        <div className="main reveal d2" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-          <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', justifyContent: 'space-between', gap: 12 }}>
+        <div className="main reveal d2 stack gap-4">
+          <div className="row row-baseline" style={{ flexWrap: 'wrap' }}>
             <h2>Positions</h2>
             <div role="group" aria-label="Filter positions" style={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
               {(
@@ -174,10 +183,16 @@ export function Book() {
                   <th scope="col">Repo</th>
                   <th scope="col">Borrower</th>
                   <th scope="col">Lender</th>
-                  <th scope="col" className="num">Cash</th>
-                  <th scope="col" className="num">Rate</th>
+                  <th scope="col" className="num">
+                    Cash
+                  </th>
+                  <th scope="col" className="num">
+                    Rate
+                  </th>
                   <th scope="col">Maturity</th>
-                  <th scope="col" className="num">Coverage</th>
+                  <th scope="col" className="num">
+                    Coverage
+                  </th>
                   <th scope="col">Status</th>
                 </tr>
               </thead>
@@ -189,7 +204,7 @@ export function Book() {
                     <tr key={String(repo.id)} className={closed || expired ? 'closed' : ''} onClick={() => (window.location.hash = href(`/repo/${repo.id}`))}>
                       <td>
                         <a href={href(`/repo/${repo.id}`)} style={{ color: 'var(--ink)' }}>
-                          #{String(repo.id).padStart(4, '0')}
+                          {formatRepoId(repo.id)}
                         </a>
                       </td>
                       <td>{party(repo.order.borrower, account)}</td>
@@ -219,64 +234,59 @@ export function Book() {
           </div>
         </div>
 
-        <aside className="side reveal d3" style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-          <div className="panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 16 }}>
-            <div className="row" style={{ alignItems: 'baseline' }}>
+        <aside className="side reveal d3 stack gap-8">
+          <div className="panel panel-pad stack gap-4">
+            <div className="row row-baseline">
               <h3>Collateral Oracle</h3>
-              <span className="small" style={{ color: oracle.invalid ? 'var(--bad)' : 'var(--ok)', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span className={`small ${oracle.invalid ? 'text-bad' : 'text-ok'}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
                 {!oracle.invalid && <span className="pulse-dot" aria-hidden="true" />}
                 {oracle.invalid ? 'No NAV' : 'Live'}
               </span>
             </div>
             <div className="small muted">nhNAVOracle · {oracle.description}</div>
-            <div className="figure" style={{ fontSize: 40 }}>
+            <div className="figure fig-lg">
               <Tween value={Number(oracle.price) / 1e8} format={(n) => price(BigInt(Math.round(n * 1e8)))} />
               <span className="muted" style={{ fontFamily: 'var(--sans)', fontSize: 14, marginLeft: 8 }}>
                 per nhBOND
               </span>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 12, fontSize: 12 }}>
+            <div className="oracle-meta-grid">
               {[
                 ['Last update', oracle.updatedAt ? `${time(oracle.updatedAt)} · ${ago(age)}` : '—'],
                 ['Change vs previous', move === undefined ? '—' : `${move > 0 ? '+' : move < 0 ? '−' : ''}${Math.abs(move)} bps`],
                 ['Round', String(oracle.roundId)],
               ].map(([k, v]) => (
-                <div key={k} style={{ display: 'flex', flexDirection: 'column', gap: 4, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
+                <div key={k} className="oracle-meta-cell">
                   <span className="muted">{k}</span>
                   <span>{v}</span>
                 </div>
               ))}
             </div>
-            {oracle.invalid && <p className="small" style={{ margin: 0, color: 'var(--bad)' }}>No valid NAV: accepting, margin calls, top-ups and defaults revert until the calculation agent posts one (Market tab).</p>}
+            {oracle.invalid && (
+              <p className="small text-bad" style={{ margin: 0 }}>
+                No valid NAV: accepting, margin calls, top-ups and defaults revert until the calculation agent posts one (Market tab).
+              </p>
+            )}
           </div>
 
           <div>
             <h3 style={{ marginBottom: 12 }}>Settlement Events</h3>
             {!snapshot!.historyComplete && <p className="muted small">Scanning older blocks…</p>}
             {view.events.length === 0 && snapshot!.historyComplete && <p className="muted small">No events yet.</p>}
-            {view.events.slice(0, 8).map((e, i) => (
+            {visibleEvents.map((e, i) => (
               <a
                 key={e.key}
                 href={href(`/repo/${e.repoId}`)}
-                className="reveal"
-                style={{
-                  animationDelay: `${240 + i * 50}ms`,
-                  display: 'flex',
-                  gap: 14,
-                  padding: '14px 0',
-                  borderTop: '1px solid var(--line)',
-                  borderBottom: i === Math.min(7, view.events.length - 1) ? '1px solid var(--line)' : undefined,
-                  textDecoration: 'none',
-                  color: 'var(--ink)',
-                }}
+                className={`reveal event-row${i === visibleEvents.length - 1 ? ' last' : ''}`}
+                style={{ animationDelay: `${240 + i * 50}ms` }}
               >
-                <span className="small muted" style={{ width: 52, flexShrink: 0 }}>
-                  {!e.timestamp ? '…' : now - e.timestamp < 86_400 ? time(e.timestamp) : date(e.timestamp)}
-                </span>
-                <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
-                  <span style={{ fontWeight: 500, color: eventTone[e.name] }}>{e.name}</span>
+                <span className="small muted event-time">{!e.timestamp ? '…' : now - e.timestamp < 86_400 ? time(e.timestamp) : date(e.timestamp)}</span>
+                <span className="stack" style={{ gap: 2, minWidth: 0 }}>
+                  <span className="fw-500" style={{ color: eventTone[e.name] }}>
+                    {e.name}
+                  </span>
                   <span className="small muted">
-                    #{String(e.repoId).padStart(4, '0')} · {describe(e)}
+                    {formatRepoId(e.repoId)} · {describe(e)}
                   </span>
                 </span>
               </a>

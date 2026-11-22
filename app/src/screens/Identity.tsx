@@ -1,27 +1,18 @@
 import { useEffect, useState } from 'react'
-import { isAddress, parseUnits, type Address } from 'viem'
+import { isAddress, type Address } from 'viem'
 import { AddressLink, Check, Empty } from '../components/ui'
 import { backend, type IdentityStatus, type OperatorRights } from '../lib/backend'
-import { amount, eur, shortAddr } from '../lib/format'
-import { same } from '../lib/repo'
+import { amount, eur, parseDecimal, shortAddr } from '../lib/format'
+import { ZERO, same } from '../lib/repo'
 import { useLedger } from '../lib/store'
 
 const COUNTRY_DE = 276
-const ZERO = '0x0000000000000000000000000000000000000000'
 
 /** `#/identity?wallet=0x…` preselects a wallet, e.g. from a "not verified" warning. */
 function walletFromHash() {
   const q = window.location.hash.split('?')[1]
   const w = q ? new URLSearchParams(q).get('wallet') : null
   return w && isAddress(w) ? w : ''
-}
-
-function whole(input: string) {
-  try {
-    return input.trim() ? parseUnits(input.replace(/[,_\s]/g, ''), 18) : 0n
-  } catch {
-    return -1n
-  }
 }
 
 /**
@@ -78,8 +69,8 @@ export function Identity() {
   const shared = same(d.bondRegistry, d.cashRegistry)
   const verified = !!status && status.bond.verified && status.cash.verified
   const registered = !!status && (status.bond.registered || status.cash.registered)
-  const bondAmount = whole(bonds)
-  const cashAmount = whole(cash)
+  const bondAmount = parseDecimal(bonds, 18, -1n)
+  const cashAmount = parseDecimal(cash, 18, -1n)
   const countryCode = Number(country)
   const isOperator = !!rights && rights.bondRegistryAgent && rights.cashRegistryAgent
   const badInput = bondAmount < 0n || cashAmount < 0n || !Number.isInteger(countryCode) || countryCode <= 0 || countryCode > 65535
@@ -93,25 +84,24 @@ export function Identity() {
     })
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 40 }}>
-      <section className="reveal" style={{ display: 'flex', flexDirection: 'column', gap: 10, maxWidth: 760 }}>
+    <div className="stack gap-10">
+      <section className="reveal page-intro">
         <h1>Identity registry.</h1>
-        <p className="muted" style={{ margin: 0, fontSize: 15 }}>
-          nhBOND, nhEUR and RepoDvP only deal with wallets verified in the ERC-3643 identity registry. Onboarding deploys an ONCHAINID identity owned by the wallet and registers it{shared ? '' : ' in both token registries'}. No claim topics are
-          required, so registration alone verifies. The operator wallet can then fund the desk with nhBOND and nhEUR.
+        <p className="muted lead">
+          nhBOND, nhEUR and RepoDvP only deal with wallets verified in the ERC-3643 identity registry. Onboarding deploys an ONCHAINID identity owned by the wallet and registers it{shared ? '' : ' in both token registries'}. No claim topics are required, so registration alone verifies. The operator wallet can then fund the desk with nhBOND and nhEUR.
         </p>
       </section>
 
       <section className="split">
-        <div className="main reveal d1" style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <div className="main reveal d1 stack gap-4">
           <h2>Wallet</h2>
-          <div className="panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 14 }}>
+          <div className="panel panel-pad stack gap-4">
             <div className="field">
               <label htmlFor="wallet">Wallet Address</label>
               <input id="wallet" spellCheck={false} placeholder="0x…" value={input} onChange={(e) => setInput(e.target.value)} />
-              {input.trim() && !wallet && <span className="hint" style={{ color: 'var(--bad)' }}>Not a valid address.</span>}
+              {input.trim() && !wallet && <span className="hint bad">Not a valid address.</span>}
             </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+            <div className="cluster-sm">
               {(['borrower', 'lender', 'agent'] as const).map((r) =>
                 roles[r] ? (
                   <button key={r} type="button" className="chip" aria-pressed={same(wallet, roles[r])} onClick={() => setInput(roles[r]!)}>
@@ -123,7 +113,7 @@ export function Identity() {
 
             {wallet && !status && <span className="small muted">Reading the registry…</span>}
             {status && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 8, fontSize: 13, paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+              <div className="stack gap-2 row-divider" style={{ fontSize: 13 }}>
                 {shared ? (
                   <Check label="Verified · identity registry" ok={status.bond.verified} fail={status.bond.registered ? 'Registered, not verified' : 'Not registered'} />
                 ) : (
@@ -152,8 +142,8 @@ export function Identity() {
             )}
 
             {status && account && isOperator && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 14, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 12 }}>
+              <div className="stack gap-4 divider-top">
+                <div className="field-grid-compact">
                   {!verified && (
                     <div className="field">
                       <label htmlFor="country">Country Code</label>
@@ -172,8 +162,8 @@ export function Identity() {
                     <span className="hint">Cash to lend or repay · 0 to skip</span>
                   </div>
                 </div>
-                {bondAmount > 0n && !rights.bondAgent && <span className="small" style={{ color: 'var(--bad)' }}>The operator wallet is not an nhBOND agent, so it can’t issue bonds.</span>}
-                {cashAmount > 0n && !rights.treasury && <span className="small" style={{ color: 'var(--bad)' }}>The operator wallet lacks nhEUR TREASURY_ROLE, so it can’t mint.</span>}
+                {bondAmount > 0n && !rights.bondAgent && <span className="small text-bad">The operator wallet is not an nhBOND agent, so it can’t issue bonds.</span>}
+                {cashAmount > 0n && !rights.treasury && <span className="small text-bad">The operator wallet lacks nhEUR TREASURY_ROLE, so it can’t mint.</span>}
                 <button
                   type="button"
                   className="btn primary block"
@@ -199,7 +189,9 @@ export function Identity() {
           <h2 style={{ marginTop: 24 }}>Registered Wallets</h2>
           {!snapshot.historyComplete && <p className="small muted">Scanning older blocks…</p>}
           {snapshot.registrations.length === 0 && snapshot.historyComplete ? (
-            <p className="small muted" style={{ margin: 0 }}>No registrations found.</p>
+            <p className="small muted" style={{ margin: 0 }}>
+              No registrations found.
+            </p>
           ) : (
             <table className="book">
               <thead>
@@ -222,7 +214,7 @@ export function Identity() {
                       <AddressLink address={r.identity} />
                     </td>
                     {!shared && <td>{r.bond && r.cash ? 'nhBOND · nhEUR' : r.bond ? 'nhBOND only' : 'nhEUR only'}</td>}
-                    <td style={{ textAlign: 'right' }}>
+                    <td className="num">
                       <button type="button" className="chip" onClick={() => setInput(r.wallet)}>
                         Inspect
                       </button>
@@ -235,7 +227,7 @@ export function Identity() {
         </div>
 
         <aside className="side reveal d2">
-          <div className="panel" style={{ padding: 24, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+          <div className="panel panel-pad stack gap-3" style={{ fontSize: 13 }}>
             <h3>Operator Wallet</h3>
             {!account ? (
               <>
@@ -251,10 +243,10 @@ export function Identity() {
                 {!shared && <Check label="nhEUR registry agent" ok={rights?.cashRegistryAgent} fail="No" />}
                 <Check label="nhBOND agent · issue" ok={rights?.bondAgent} fail="No" />
                 <Check label="nhEUR TREASURY_ROLE · mint" ok={rights?.treasury} fail="No" />
-                {rights && !isOperator && <span className="small" style={{ color: 'var(--bad)' }}>This wallet can’t register identities. Disconnect and connect the deployer wallet.</span>}
+                {rights && !isOperator && <span className="small text-bad">This wallet can’t register identities. Disconnect and connect the deployer wallet.</span>}
               </>
             )}
-            <div className="row" style={{ paddingTop: 10, borderTop: '1px solid var(--line)' }}>
+            <div className="row row-divider">
               <span className="muted">{shared ? 'Registry' : 'nhBOND registry'}</span>
               <AddressLink address={d.bondRegistry} />
             </div>

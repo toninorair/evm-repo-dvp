@@ -1,4 +1,4 @@
-import { formatUnits } from 'viem'
+import { formatUnits, parseUnits } from 'viem'
 
 const nf = (min: number, max = min) =>
   new Intl.NumberFormat('en-US', { minimumFractionDigits: min, maximumFractionDigits: max })
@@ -33,6 +33,25 @@ export function bps(value: number, digits = 2) {
 export function shortAddr(a?: string) {
   if (!a) return '—'
   return `${a.slice(0, 6)}…${a.slice(-4)}`
+}
+
+/** Formats a repo identifier: 4n → "#0004". */
+export function formatRepoId(id: bigint) {
+  return `#${String(id).padStart(4, '0')}`
+}
+
+/**
+ * Parses a human-entered decimal string (tolerating commas, underscores, spaces) into base units.
+ * Returns `fallback` (default `0n`) on invalid input; returns `0n` on empty input.
+ */
+export function parseDecimal(input: string, decimals = 18, fallback = 0n): bigint {
+  const cleaned = input.trim().replace(/[,_\s]/g, '')
+  if (!cleaned) return 0n
+  try {
+    return parseUnits(cleaned, decimals)
+  } catch {
+    return fallback
+  }
 }
 
 /** Term label: "O/N", "7d", "6h", "15m". */

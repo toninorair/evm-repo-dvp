@@ -179,7 +179,7 @@ export function Operator() {
         <div className="eyebrow">
           Operator · {date(now)}, {time(now)}
         </div>
-        <h1>Market &amp; Identity Operations</h1>
+        <h1>Market Operations</h1>
       </section>
 
       <section className="split">

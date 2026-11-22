@@ -4,6 +4,7 @@
 
 Smart contracts and settlement console for tokenised EUR sovereign bond repurchase agreements (`RepoDvP`) with atomic Delivery-versus-Payment (DvP), Actual/360 per-second interest accrual, mark-to-market margin calls, and GMRA close-out netting on Ethereum.
 
+## Smart Contract Architecture
 ![Nordhaven Smart Contract Architecture](diagrams/contract-architecture.svg)
 
 ## Contracts & Key Assumptions
@@ -16,6 +17,7 @@ Smart contracts and settlement console for tokenised EUR sovereign bond repurcha
 | [`nhNAVOracle.sol`](src/nhNAVOracle.sol) | Chainlink `AggregatorV3`  | Calculation-agent EUR NAV feed (8 decimals)                             | [`0x8fa64250d92e397249bEacFb335B73016fCEC1be`](https://sepolia.etherscan.io/address/0x8fa64250d92e397249bEacFb335B73016fCEC1be) |
 | `IdentityRegistry`                       | Official ERC-3643 (T-REX) | On-chain `ONCHAINID` verification enforced by both tokens and `RepoDvP` | [`0xEBC4c98BD77287090Bf2A29357BF846f61eaB98B`](https://sepolia.etherscan.io/address/0xEBC4c98BD77287090Bf2A29357BF846f61eaB98B) |
 
+## Tokenised Repo Lifecycle and Flows 
 ![Tokenised Repo Lifecycle](diagrams/repo-lifecycle.svg)
 
 **Three core architectural calls:**

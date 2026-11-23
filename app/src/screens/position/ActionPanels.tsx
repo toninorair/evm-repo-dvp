@@ -71,7 +71,7 @@ export function AcceptPanel({ repo }: { repo: Repo }) {
 }
 
 export function MarginPanel({ repo }: { repo: Repo }) {
-  const { snapshot, account, busy, run, connect } = useLedger()
+  const { snapshot, account, tab, busy, run, connect } = useLedger()
   const now = useNow()
   const nav = snapshot!.oracle.price
   const m = margin(repo, nav, now)
@@ -106,7 +106,7 @@ export function MarginPanel({ repo }: { repo: Repo }) {
           <span>{price(m.callPrice)}</span>
         </div>
       </div>
-      {repo.state.status === RepoStatus.Active && (
+      {repo.state.status === RepoStatus.Active && tab === 'lender' && (
         <>
           <button type="button" className="btn block" disabled={busy || (!!account && !canCall)} onClick={() => (account ? run('Margin call', (st) => backend.marginCall(repo, st)) : connect())}>
             {m.healthy ? 'Margin call · not due' : 'Issue margin call'}

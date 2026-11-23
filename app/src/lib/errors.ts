@@ -1,4 +1,4 @@
-import { BaseError, ContractFunctionRevertedError, UserRejectedRequestError } from 'viem'
+import { BaseError, ContractFunctionRevertedError, ResourceNotFoundRpcError, UserRejectedRequestError } from 'viem'
 import { RepoStatus, statusLabel } from './repo'
 
 const revertCopy: Record<string, string> = {
@@ -40,6 +40,9 @@ export function explain(err: unknown): string {
       return revert.shortMessage
     }
     if (/user (rejected|denied)/i.test(err.message)) return 'You declined the request in your wallet.'
+    if (err.walk((e) => e instanceof ResourceNotFoundRpcError)) {
+      return 'Wallet RPC could not find the requested block, nonce, or transaction. Check your wallet network/RPC or clear activity data in wallet settings.'
+    }
     return err.shortMessage
   }
   if (err instanceof Error) return err.message

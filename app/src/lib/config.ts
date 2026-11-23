@@ -24,7 +24,6 @@ export const repoDvP: Address | undefined =
 export const sepoliaFallbackRpcs = [
   'https://ethereum-sepolia-rpc.publicnode.com',
   'https://sepolia.drpc.org',
-  'https://rpc.sepolia.org',
   'https://1rpc.io/sepolia',
 ] as const
 

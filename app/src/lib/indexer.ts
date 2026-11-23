@@ -16,6 +16,7 @@ const EVENT_NAMES = new Set<string>([
 const MAX_CHUNK = 10_000n
 /** Free tier RPCs (e.g. Alchemy Free) limit eth_getLogs to 10 blocks; public RPCs allow 10,000. */
 const RANGE_ERROR = /range|too many|limit|exceed|10,?000|10 block|up to a \d+|results|block.*size|query returned more|free tier|http request failed/i
+const PRUNED_ERROR = /pruned|4444/i
 
 export class LogIndexer {
   private client: PublicClient
@@ -78,9 +79,22 @@ export class LogIndexer {
         from = to + 1n
         if (this.chunk < MAX_CHUNK) this.chunk = this.chunk * 2n < MAX_CHUNK ? this.chunk * 2n : MAX_CHUNK
       } catch (e) {
-        // Shrink only when the RPC refuses the range; other failures (rate limits, timeouts) retry on the next poll.
-        if (!RANGE_ERROR.test(e instanceof Error ? e.message : String(e)) || this.chunk <= 10n) throw e
-        this.chunk = this.chunk / 4n > 10n ? this.chunk / 4n : 10n
+        const msg = e instanceof Error ? e.message : String(e)
+        if (PRUNED_ERROR.test(msg)) {
+          // Public RPCs prune older blocks (EIP-4444); skip the pruned window and scan recent history instead.
+          const recentStart = head > 2_000n ? head - 2_000n : 0n
+          if (from < recentStart) {
+            from = recentStart
+            this.fromBlock = recentStart
+            continue
+          }
+        }
+        // Shrink only when the RPC refuses the range; otherwise stop scanning so live contract state still loads.
+        if (RANGE_ERROR.test(msg) && this.chunk > 10n) {
+          this.chunk = this.chunk / 4n > 10n ? this.chunk / 4n : 10n
+          continue
+        }
+        return false
       }
     }
     await this.fillBlockTimes()

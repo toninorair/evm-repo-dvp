@@ -41,7 +41,7 @@ export function explain(err: unknown): string {
     }
     if (/user (rejected|denied)/i.test(err.message)) return 'You declined the request in your wallet.'
     if (err.walk((e) => e instanceof ResourceNotFoundRpcError)) {
-      return 'Wallet RPC could not find the requested block, nonce, or transaction. Check your wallet network/RPC or clear activity data in wallet settings.'
+      return 'RPC could not find the requested block, nonce, or transaction (or hit a rate limit). Try again, check your wallet network/RPC, or clear wallet activity data.'
     }
     return err.shortMessage
   }
